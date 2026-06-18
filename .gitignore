@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Android
+android/libs/
+android/bin/
+android/gen/
+android/out/
+
+# Build output
+*_build/
+
+# OS
+.DS_Store
+*.swp

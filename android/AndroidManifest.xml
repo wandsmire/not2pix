@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.mirwanda.not2pix">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Not2Pix"
+        android:largeHeap="true"
+        android:theme="@style/GdxTheme">
+
+        <activity
+            android:name="com.mirwanda.not2pix.AndroidLauncher"
+            android:label="Not2Pix"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode"
+            android:exported="true">
+
+            <!-- Normal launcher -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Receive edit requests from NotTiled or other apps -->
+            <intent-filter>
+                <action android:name="android.intent.action.EDIT" />
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/png" />
+                <data android:mimeType="image/bmp" />
+            </intent-filter>
+
+            <!-- Custom action for NotTiled direct integration -->
+            <intent-filter>
+                <action android:name="com.mirwanda.not2pix.EDIT_TILESET" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/png" />
+            </intent-filter>
+
+        </activity>
+    </application>
+</manifest>

@@ -1,0 +1,12 @@
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+sourceSets.main.java.srcDirs = ["src/"]
+
+project.ext.mainClassName = "com.mirwanda.not2pix.desktop.DesktopLauncher"
+
+task run(dependsOn: classes, type: JavaExec) {
+    mainClass = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    ignoreExitValue = true
+}
