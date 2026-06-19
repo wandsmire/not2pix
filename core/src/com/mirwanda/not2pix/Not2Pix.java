@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.input.GestureDetector;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.Preferences;
 import com.mirwanda.not2pix.ui.EditorUI;
 import java.util.ArrayList;
 
@@ -53,6 +54,9 @@ public class Not2Pix extends ApplicationAdapter {
     // Grid
     public boolean showGrid = true;
     public int tileSize = 0;
+    public Color gridColor = new Color(0, 0, 0, 0.5f);
+    public Color tileGridColor = new Color(0, 0, 0, 0.7f);
+    public Color bgColor = new Color(0.12f, 0.12f, 0.12f, 1f);
 
     // Mirror modifiers
     public boolean mirrorX = false;
@@ -98,6 +102,7 @@ public class Not2Pix extends ApplicationAdapter {
         camera = new OrthographicCamera();
 
         palette = new Palette();
+        loadPrefs();
         undoManager = new UndoManager();
         undoManager.setCanvasSize(canvasWidth, canvasHeight);
         tools = new Tool[]{ new PencilTool(), new EraserTool(), new FillTool(), new ShapeTool(), new SelectionTool() };
@@ -227,7 +232,7 @@ public class Not2Pix extends ApplicationAdapter {
 
         handleInput();
 
-        Gdx.gl.glClearColor(0.12f, 0.12f, 0.12f, 1);
+        Gdx.gl.glClearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         // Set camera zoom/pan
@@ -313,7 +318,25 @@ public class Not2Pix extends ApplicationAdapter {
             Color previewColor = palette.getSelected();
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(previewColor);
-            st.drawPreviewSR(shapeRenderer, canvasWidth, canvasHeight);
+            if (st.currentShape == ShapeTool.Shape.LASSO_FILL && st.lassoPoints.size() > 1) {
+                // Draw lasso path preview
+                for (int i = 0; i < st.lassoPoints.size() - 1; i++) {
+                    int[] a = st.lassoPoints.get(i), b = st.lassoPoints.get(i + 1);
+                    shapeRenderer.rectLine(a[0] + 0.5f, canvasHeight - a[1] - 0.5f,
+                                           b[0] + 0.5f, canvasHeight - b[1] - 0.5f, 0.5f);
+                }
+                // Draw closing line back to start (dashed appearance via different color)
+                int[] first = st.lassoPoints.get(0);
+                int[] last = st.lassoPoints.get(st.lassoPoints.size() - 1);
+                shapeRenderer.setColor(1f, 1f, 1f, 0.4f);
+                shapeRenderer.rectLine(last[0] + 0.5f, canvasHeight - last[1] - 0.5f,
+                                       first[0] + 0.5f, canvasHeight - first[1] - 0.5f, 0.3f);
+                // Draw start marker dot
+                shapeRenderer.setColor(Color.WHITE);
+                shapeRenderer.circle(first[0] + 0.5f, canvasHeight - first[1] - 0.5f, 1.5f);
+            } else {
+                st.drawPreviewSR(shapeRenderer, canvasWidth, canvasHeight);
+            }
             shapeRenderer.end();
         }
 
@@ -328,7 +351,7 @@ public class Not2Pix extends ApplicationAdapter {
             Texture bufTex = sel.getBufferTexture();
             if (bufTex != null) {
                 batch.begin();
-                batch.draw(bufTex, wx, wy, sw2, sh2);
+                batch.draw(bufTex, wx, wy, sw2 / 2f, sh2 / 2f, sw2, sh2, 1, 1, -sel.rotationDeg, 0, 0, bufTex.getWidth(), bufTex.getHeight(), false, false);
                 batch.end();
             }
             // Draw thick visible outline
@@ -345,6 +368,9 @@ public class Not2Pix extends ApplicationAdapter {
         // Draw grid
         if (showGrid && zoom >= 4f) {
             drawGrid();
+        }
+        if (showGrid && tileSize > 0) {
+            drawTileGrid();
         }
 
         // Draw UI overlay
@@ -655,30 +681,31 @@ public class Not2Pix extends ApplicationAdapter {
     }
 
     private void drawGrid() {
-        if (canvasWidth > 256 || canvasHeight > 256) return; // too many lines for big canvases
         Gdx.gl.glEnable(GL20.GL_BLEND);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(0, 0, 0, 0.3f);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(gridColor);
+        float lw = 0.05f;
         for (int x = 0; x <= canvasWidth; x++) {
-            shapeRenderer.line(x, 0, x, canvasHeight);
+            shapeRenderer.rectLine(x, 0, x, canvasHeight, lw);
         }
         for (int y = 0; y <= canvasHeight; y++) {
-            shapeRenderer.line(0, y, canvasWidth, y);
+            shapeRenderer.rectLine(0, y, canvasWidth, y, lw);
         }
         shapeRenderer.end();
-        // Tile grid
-        if (tileSize > 0) {
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0f, 0f, 0f, 0.7f);
-            float lw = 0.1f;
-            for (int x = 0; x <= canvasWidth; x += tileSize) {
-                shapeRenderer.rectLine(x, 0, x, canvasHeight, lw);
-            }
-            for (int y = canvasHeight; y >= 0; y -= tileSize) {
-                shapeRenderer.rectLine(0, y, canvasWidth, y, lw);
-            }
-            shapeRenderer.end();
+    }
+
+    private void drawTileGrid() {
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(tileGridColor);
+        float lw = 0.1f;
+        for (int x = 0; x <= canvasWidth; x += tileSize) {
+            shapeRenderer.rectLine(x, 0, x, canvasHeight, lw);
         }
+        for (int y = canvasHeight; y >= 0; y -= tileSize) {
+            shapeRenderer.rectLine(0, y, canvasWidth, y, lw);
+        }
+        shapeRenderer.end();
     }
 
     // === Multi-document ===
@@ -731,14 +758,18 @@ public class Not2Pix extends ApplicationAdapter {
     }
 
     public void closeDocument() {
-        if (documents.size() <= 1) {
-            closeApp();
-            return;
-        }
         documents.get(activeDocIndex).dispose();
         documents.remove(activeDocIndex);
-        if (activeDocIndex >= documents.size()) activeDocIndex = documents.size() - 1;
-        loadFromDocument(documents.get(activeDocIndex));
+        if (documents.isEmpty()) {
+            // Create a fresh document instead of exiting
+            Document doc = new Document("Untitled 1", 32, 32);
+            documents.add(doc);
+            activeDocIndex = 0;
+            loadFromDocument(doc);
+        } else {
+            if (activeDocIndex >= documents.size()) activeDocIndex = documents.size() - 1;
+            loadFromDocument(documents.get(activeDocIndex));
+        }
         fitToWidth();
         if (ui != null) ui.docStrip.scrollToActive();
     }
@@ -1060,6 +1091,21 @@ public class Not2Pix extends ApplicationAdapter {
         setZoom(ideal);
         panX = 0;
         panY = 0;
+    }
+
+    public void loadPrefs() {
+        Preferences p = Gdx.app.getPreferences("Not2Pix");
+        gridColor.set(p.getFloat("gridR", 0), p.getFloat("gridG", 0), p.getFloat("gridB", 0), p.getFloat("gridA", 0.5f));
+        tileGridColor.set(p.getFloat("tgridR", 0), p.getFloat("tgridG", 0), p.getFloat("tgridB", 0), p.getFloat("tgridA", 0.7f));
+        bgColor.set(p.getFloat("bgR", 0.12f), p.getFloat("bgG", 0.12f), p.getFloat("bgB", 0.12f), p.getFloat("bgA", 1f));
+    }
+
+    public void savePrefs() {
+        Preferences p = Gdx.app.getPreferences("Not2Pix");
+        p.putFloat("gridR", gridColor.r); p.putFloat("gridG", gridColor.g); p.putFloat("gridB", gridColor.b); p.putFloat("gridA", gridColor.a);
+        p.putFloat("tgridR", tileGridColor.r); p.putFloat("tgridG", tileGridColor.g); p.putFloat("tgridB", tileGridColor.b); p.putFloat("tgridA", tileGridColor.a);
+        p.putFloat("bgR", bgColor.r); p.putFloat("bgG", bgColor.g); p.putFloat("bgB", bgColor.b); p.putFloat("bgA", bgColor.a);
+        p.flush();
     }
 
     @Override

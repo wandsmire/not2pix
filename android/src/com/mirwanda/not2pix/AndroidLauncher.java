@@ -90,7 +90,14 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("image/*");
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-        startActivityForResult(intent, REQUEST_OPEN);
+        // Also add ACTION_GET_CONTENT as a secondary option for third-party file managers
+        Intent getContent = new Intent(Intent.ACTION_GET_CONTENT);
+        getContent.addCategory(Intent.CATEGORY_OPENABLE);
+        getContent.setType("image/*");
+        // Use chooser to let user pick which file manager to use
+        Intent chooser = Intent.createChooser(getContent, "Open image with...");
+        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{intent});
+        startActivityForResult(chooser, REQUEST_OPEN);
     }
 
     @Override

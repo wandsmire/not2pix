@@ -47,8 +47,14 @@ public class Minimap {
         }
 
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(1, 1, 1, 1);
-        sr.rect(mx, my, drawW, drawH);
+        float cellW = drawW / 8f;
+        float cellH = drawH / 8f;
+        for (int cy = 0; cy < 8; cy++) {
+            for (int cx = 0; cx < 8; cx++) {
+                sr.setColor((cx + cy) % 2 == 0 ? 0.9f : 0.7f, (cx + cy) % 2 == 0 ? 0.9f : 0.7f, (cx + cy) % 2 == 0 ? 0.9f : 0.7f, 1f);
+                sr.rect(mx + cx * cellW, my + cy * cellH, cellW, cellH);
+            }
+        }
         sr.end();
 
         if (thumbnail != null) {

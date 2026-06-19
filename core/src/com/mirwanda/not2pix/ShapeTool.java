@@ -3,23 +3,33 @@ package com.mirwanda.not2pix;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import java.util.ArrayList;
 
 /**
- * Shape tool: Line, Rectangle, Diamond, Ellipse. Preview drawn with ShapeRenderer.
+ * Shape tool: Line, Rectangle, Diamond, Ellipse, Lasso Fill. Preview drawn with ShapeRenderer.
  */
 public class ShapeTool implements Tool {
 
-    public enum Shape { LINE, RECT, DIAMOND, ELLIPSE }
+    public enum Shape { LINE, RECT, DIAMOND, ELLIPSE, LASSO_FILL }
     public Shape currentShape = Shape.LINE;
 
     private int startX, startY;
     private int endX, endY;
     public boolean dragging = false;
 
+    // Lasso fill: collected freehand points
+    public ArrayList<int[]> lassoPoints = new ArrayList<>();
+
     @Override public String getName() { return "Shape"; }
 
     @Override
     public void onDown(Pixmap target, int x, int y, Color color) {
+        if (currentShape == Shape.LASSO_FILL) {
+            lassoPoints.clear();
+            lassoPoints.add(new int[]{x, y});
+            dragging = true;
+            return;
+        }
         startX = x; startY = y;
         endX = x; endY = y;
         dragging = false;
@@ -27,12 +37,39 @@ public class ShapeTool implements Tool {
 
     @Override
     public void onDrag(Pixmap target, int x, int y, Color color) {
+        if (currentShape == Shape.LASSO_FILL) {
+            if (!lassoPoints.isEmpty()) {
+                int[] last = lassoPoints.get(lassoPoints.size() - 1);
+                if (last[0] != x || last[1] != y) lassoPoints.add(new int[]{x, y});
+            }
+            dragging = true;
+            return;
+        }
         endX = x; endY = y;
         dragging = true;
     }
 
     @Override
     public void onUp(Pixmap target, int x, int y, Color color) {
+        if (currentShape == Shape.LASSO_FILL) {
+            if (lassoPoints.size() >= 3) {
+                target.setBlending(Pixmap.Blending.None);
+                target.setColor(color);
+                // Draw outline
+                for (int i = 0; i < lassoPoints.size() - 1; i++) {
+                    int[] a = lassoPoints.get(i), b = lassoPoints.get(i + 1);
+                    PencilTool.drawLine(target, a[0], a[1], b[0], b[1], 1);
+                }
+                int[] first = lassoPoints.get(0), last = lassoPoints.get(lassoPoints.size() - 1);
+                PencilTool.drawLine(target, last[0], last[1], first[0], first[1], 1);
+                // Scanline polygon fill
+                lassoFill(target, color);
+                target.setBlending(Pixmap.Blending.SourceOver);
+            }
+            lassoPoints.clear();
+            dragging = false;
+            return;
+        }
         target.setColor(color);
         drawShape(target, startX, startY, x, y);
         dragging = false;
@@ -125,6 +162,31 @@ public class ShapeTool implements Tool {
             pm.drawPixel(cx + x, cy - y); pm.drawPixel(cx - x, cy - y);
             if (err > 0) { err += rx2 * (-2 * y + 3); } else { err += ry2 * (2 * x + 2) + rx2 * (-2 * y + 3); x++; }
             y--;
+        }
+    }
+
+    private void lassoFill(Pixmap pm, Color color) {
+        if (lassoPoints.size() < 3) return;
+        int w = pm.getWidth(), h = pm.getHeight();
+        int minY = h, maxY = 0;
+        for (int[] p : lassoPoints) { if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; }
+        minY = Math.max(0, minY); maxY = Math.min(h - 1, maxY);
+        pm.setColor(color);
+        int n = lassoPoints.size();
+        for (int sy = minY; sy <= maxY; sy++) {
+            ArrayList<Integer> ix = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                int[] a = lassoPoints.get(i), b = lassoPoints.get((i + 1) % n);
+                int y0 = a[1], y1 = b[1];
+                if ((y0 <= sy && y1 > sy) || (y1 <= sy && y0 > sy)) {
+                    ix.add(a[0] + (sy - y0) * (b[0] - a[0]) / (y1 - y0));
+                }
+            }
+            java.util.Collections.sort(ix);
+            for (int i = 0; i + 1 < ix.size(); i += 2) {
+                int x0 = Math.max(0, ix.get(i)), x1 = Math.min(w - 1, ix.get(i + 1));
+                for (int sx = x0; sx <= x1; sx++) pm.drawPixel(sx, sy);
+            }
         }
     }
 }

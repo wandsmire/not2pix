@@ -19,14 +19,18 @@ public class Toolbar extends UIPanel {
     public static final int TOOL_FILL = 2;
     public static final int TOOL_SHAPE = 3;
     public static final int TOOL_SELECT = 4;
-    public static final int BTN_UNDO = 5;
-    public static final int BTN_REDO = 6;
-    public static final int BTN_MENU = 7;
+    public static final int BTN_UNDO = -1;
+    public static final int BTN_REDO = -1;
+    public static final int BTN_MENU = 5;
     public static final int TOOL_OFFSET = 0;
     private static final int FIRST_TOOL = 0;
     private static final int NUM_TOOLS = 5;
 
     public Toolbar(Not2Pix app, float screenWidth, float screenHeight, float dp) {
+        this(app, screenWidth, screenHeight, dp, 0);
+    }
+
+    public Toolbar(Not2Pix app, float screenWidth, float screenHeight, float dp, float bottomOffset) {
         super(0, 0, 48 * dp, 0);
         this.app = app;
         this.dp = dp;
@@ -34,15 +38,15 @@ public class Toolbar extends UIPanel {
         float pad = 2 * dp;
         float lw = Math.max(2f, 1.5f * dp);
 
-        int numBtns = 8; // 5 tools + undo + redo + menu
+        int numBtns = 6; // 5 tools + menu
         this.height = numBtns * (btnSize + pad) + pad;
-        this.y = 0;
+        this.y = bottomOffset;
         this.x = 0;
 
         float bx = (width - btnSize) / 2f;
         // Build top-to-bottom: top-most button gets highest y
         // Pencil at top, menu at bottom
-        float topY = height - btnSize - pad;
+        float topY = this.y + height - btnSize - pad;
 
         // Pencil (top-most)
         UIButton pencil = new UIButton("Pen", bx, topY, btnSize, btnSize);
@@ -76,19 +80,13 @@ public class Toolbar extends UIPanel {
         children.add(select);
 
         // Undo
-        UIButton undo = new UIButton("U", bx, topY - 5 * (btnSize + pad), btnSize, btnSize);
-        undo.iconDrawer = iconUndo(lw);
-        undo.action = () -> app.undo();
-        children.add(undo);
+        // (removed - moved to EditorUI)
 
         // Redo
-        UIButton redo = new UIButton("R", bx, topY - 6 * (btnSize + pad), btnSize, btnSize);
-        redo.iconDrawer = iconRedo(lw);
-        redo.action = () -> app.redo();
-        children.add(redo);
+        // (removed - moved to EditorUI)
 
         // Menu (bottom-most)
-        UIButton menu = new UIButton("M", bx, topY - 7 * (btnSize + pad), btnSize, btnSize);
+        UIButton menu = new UIButton("M", bx, topY - 5 * (btnSize + pad), btnSize, btnSize);
         menu.iconDrawer = iconHamburger(lw);
         children.add(menu);
     }
@@ -137,12 +135,24 @@ public class Toolbar extends UIPanel {
 
     private UIButton.IconDrawer iconFill(float lw) {
         return (sr, x, y, w, h, sel) -> {
+            boolean clearMode = (app.tools[2] instanceof com.mirwanda.not2pix.FillTool)
+                && ((com.mirwanda.not2pix.FillTool) app.tools[2]).clearMode;
             sr.begin(ShapeRenderer.ShapeType.Filled);
-            sr.setColor(sel ? Color.WHITE : Color.LIGHT_GRAY);
-            sr.rect(x + w * 0.2f, y + h * 0.35f, w * 0.4f, h * 0.35f);
-            sr.rect(x + w * 0.15f, y + h * 0.65f, w * 0.5f, h * 0.08f);
-            sr.setColor(sel ? Color.CYAN : new Color(0.3f, 0.6f, 1f, 1));
-            sr.circle(x + w * 0.72f, y + h * 0.3f, lw * 2.5f);
+            if (clearMode) {
+                // "Suck" icon: bucket tipped over with X
+                sr.setColor(sel ? Color.WHITE : Color.LIGHT_GRAY);
+                sr.rect(x + w * 0.2f, y + h * 0.35f, w * 0.4f, h * 0.35f);
+                sr.rect(x + w * 0.15f, y + h * 0.65f, w * 0.5f, h * 0.08f);
+                sr.setColor(sel ? Color.RED : new Color(0.8f, 0.3f, 0.3f, 1));
+                sr.rectLine(x + w * 0.6f, y + h * 0.2f, x + w * 0.85f, y + h * 0.45f, lw * 1.5f);
+                sr.rectLine(x + w * 0.85f, y + h * 0.2f, x + w * 0.6f, y + h * 0.45f, lw * 1.5f);
+            } else {
+                sr.setColor(sel ? Color.WHITE : Color.LIGHT_GRAY);
+                sr.rect(x + w * 0.2f, y + h * 0.35f, w * 0.4f, h * 0.35f);
+                sr.rect(x + w * 0.15f, y + h * 0.65f, w * 0.5f, h * 0.08f);
+                sr.setColor(sel ? Color.CYAN : new Color(0.3f, 0.6f, 1f, 1));
+                sr.circle(x + w * 0.72f, y + h * 0.3f, lw * 2.5f);
+            }
             sr.end();
         };
     }
@@ -184,7 +194,7 @@ public class Toolbar extends UIPanel {
         };
     }
 
-    private UIButton.IconDrawer iconUndo(float lw) {
+    public UIButton.IconDrawer iconUndo(float lw) {
         return (sr, x, y, w, h, sel) -> {
             sr.begin(ShapeRenderer.ShapeType.Filled);
             sr.setColor(Color.LIGHT_GRAY);
@@ -194,7 +204,7 @@ public class Toolbar extends UIPanel {
         };
     }
 
-    private UIButton.IconDrawer iconRedo(float lw) {
+    public UIButton.IconDrawer iconRedo(float lw) {
         return (sr, x, y, w, h, sel) -> {
             sr.begin(ShapeRenderer.ShapeType.Filled);
             sr.setColor(Color.LIGHT_GRAY);

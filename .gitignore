@@ -22,3 +22,6 @@ android/out/
 # OS
 .DS_Store
 *.swp
+
+# Compiled classes
+**/bin/

@@ -32,14 +32,14 @@ public class StatusBar extends UIPanel {
         sr.end();
 
         batch.begin();
-        // App name left
+        // App name left (inset for curved edges)
         font.setColor(Color.WHITE);
-        font.draw(batch, "Not2Pix", x + 8 * dp, y + height - 6 * dp);
-        // Image size right
+        font.draw(batch, "Not2Pix", x + 20 * dp, y + height - 6 * dp);
+        // Image size right (inset for curved edges)
         String size = app.canvasWidth + "x" + app.canvasHeight;
         GlyphLayout gl = new GlyphLayout(font, size);
         font.setColor(Color.LIGHT_GRAY);
-        font.draw(batch, size, x + width - gl.width - 8 * dp, y + height - 6 * dp);
+        font.draw(batch, size, x + width - gl.width - 20 * dp, y + height - 6 * dp);
         batch.end();
     }
 }

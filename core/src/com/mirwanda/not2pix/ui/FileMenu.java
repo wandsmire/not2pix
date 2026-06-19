@@ -27,6 +27,7 @@ public class FileMenu {
     public Runnable onExportGif;
     public Runnable onSaveAse;
     public Runnable onLoadAse;
+    public Runnable onPreferences;
     private ArrayList<String> labels = new ArrayList<>();
     private ArrayList<Runnable> actions = new ArrayList<>();
 
@@ -57,15 +58,7 @@ public class FileMenu {
         labels.add("Export GIF"); actions.add(() -> { if (onExportGif != null) onExportGif.run(); });
         labels.add("Save .ase"); actions.add(() -> { if (onSaveAse != null) onSaveAse.run(); });
         labels.add("Load .ase"); actions.add(() -> { if (onLoadAse != null) onLoadAse.run(); });
-        labels.add("---"); actions.add(null);
-        labels.add("Fit to Width"); actions.add(() -> app.fitToWidth());
-        labels.add((app.showGrid ? "[x] " : "[ ] ") + "Grid"); actions.add(() -> app.showGrid = !app.showGrid);
-        String tileLabel = app.tileSize == 0 ? "Tile Grid: Off" : "Tile Grid: " + app.tileSize;
-        labels.add(tileLabel); actions.add(() -> { if (onTileGrid != null) onTileGrid.run(); });
-        labels.add((app.mirrorX ? "[x] " : "[ ] ") + "Mirror X"); actions.add(() -> app.mirrorX = !app.mirrorX);
-        labels.add((app.mirrorY ? "[x] " : "[ ] ") + "Mirror Y"); actions.add(() -> app.mirrorY = !app.mirrorY);
-        labels.add((app.onionSkin ? "[x] " : "[ ] ") + "Onion Skin"); actions.add(() -> app.onionSkin = !app.onionSkin);
-        labels.add("---"); actions.add(null);
+        labels.add("Preferences"); actions.add(() -> { if (onPreferences != null) onPreferences.run(); });
         labels.add("Exit"); actions.add(() -> { if (onExit != null) onExit.run(); });
 
         h = labels.size() * itemH;

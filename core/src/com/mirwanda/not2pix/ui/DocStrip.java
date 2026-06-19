@@ -13,6 +13,7 @@ public class DocStrip extends UIPanel {
     private Not2Pix app;
     private float dp;
     private float tabW;
+    public Runnable onCloseDoc; // called with app.activeDocIndex set to the target
 
     // Horizontal scroll
     private float scrollX = 0f;
@@ -61,16 +62,34 @@ public class DocStrip extends UIPanel {
         }
         sr.end();
 
+        // Draw + button after all tabs
+        float plusX = x + app.documents.size() * tabW - scrollX;
+        if (plusX >= x && plusX < x + width) {
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            sr.setColor(0.25f, 0.25f, 0.25f, 1);
+            float btnSize = height - 4 * dp;
+            sr.rect(plusX + 2, y + 2 * dp, btnSize, btnSize);
+            sr.end();
+        }
+
         batch.begin();
         for (int i = 0; i < app.documents.size(); i++) {
-            float tx = x + i * tabW - scrollX + 6 * dp;
-            // Clip to strip bounds
-            if (tx + tabW - 6 * dp < x || tx > x + width) continue;
+            float tx2 = x + i * tabW - scrollX + 6 * dp;
+            if (tx2 + tabW - 6 * dp < x || tx2 > x + width) continue;
             Document doc = app.documents.get(i);
             font.setColor(i == app.activeDocIndex ? Color.WHITE : Color.GRAY);
             String label = doc.name;
-            if (label.length() > 10) label = label.substring(0, 10);
-            font.draw(batch, label, tx, y + height / 2f + 5 * dp);
+            if (label.length() > 8) label = label.substring(0, 8);
+            font.draw(batch, label, tx2, y + height / 2f + 5 * dp);
+            // X close button
+            font.setColor(i == app.activeDocIndex ? new Color(1f, 0.5f, 0.5f, 1f) : Color.DARK_GRAY);
+            font.draw(batch, "x", x + i * tabW - scrollX + tabW - 14 * dp, y + height - 4 * dp);
+        }
+        // Draw + text on the button
+        if (plusX >= x && plusX < x + width) {
+            float btnSize = height - 4 * dp;
+            font.setColor(Color.WHITE);
+            font.draw(batch, "+", plusX + btnSize * 0.35f, y + height / 2f + 5 * dp);
         }
         batch.end();
 
@@ -108,11 +127,20 @@ public class DocStrip extends UIPanel {
 
     public void handleUp(float tx, float ty) {
         if (!dragging) {
-            // It was a tap — switch to tapped document
             int idx = (int) ((tx - x + scrollX) / tabW);
-            if (idx >= 0 && idx < app.documents.size()) {
-                app.switchDocument(idx);
-                scrollToActive();
+            if (idx >= app.documents.size()) {
+                app.newDocument();
+            } else if (idx >= 0) {
+                // Check if tap is on the X close area (right 16dp of tab)
+                float tabLeft = x + idx * tabW - scrollX;
+                if (tx >= tabLeft + tabW - 16 * dp) {
+                    // Close this doc (switch to it first so callback knows which)
+                    if (idx != app.activeDocIndex) app.switchDocument(idx);
+                    if (onCloseDoc != null) onCloseDoc.run();
+                } else {
+                    app.switchDocument(idx);
+                    scrollToActive();
+                }
             }
         }
         lastDragX = -1f;

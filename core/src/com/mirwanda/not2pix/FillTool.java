@@ -20,13 +20,15 @@ import java.util.Deque;
  */
 public class FillTool implements Tool {
 
+    public boolean clearMode = false; // true = fill with transparency
+
     @Override public String getName() { return "Fill"; }
 
     @Override
     public void onDown(Pixmap target, int x, int y, Color color) {
         if (x < 0 || y < 0 || x >= target.getWidth() || y >= target.getHeight()) return;
         int targetColor = target.getPixel(x, y);
-        int fillColor = Color.rgba8888(color);
+        int fillColor = clearMode ? 0 : Color.rgba8888(color);
         if (targetColor == fillColor) return;
         scanlineFill(target, x, y, targetColor, fillColor);
     }

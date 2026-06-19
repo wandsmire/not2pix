@@ -21,6 +21,7 @@ public class BrushSizePopup {
     private float x, y, w, h;
     private float dp;
     private float btnSize;
+    private boolean isPencil = false;
 
     public BrushSizePopup(Not2Pix app, float dp) {
         this.app = app;
@@ -33,6 +34,8 @@ public class BrushSizePopup {
     public void show(float bx, float by) {
         this.x = bx;
         this.y = by;
+        this.isPencil = (app.tools[app.activeToolIndex] instanceof PencilTool);
+        this.h = isPencil ? 90 * dp : 50 * dp;
         open = true;
     }
 
@@ -61,7 +64,9 @@ public class BrushSizePopup {
 
         // - button
         float bx = x + 8 * dp;
-        float by2 = y + (h - btnSize) / 2f;
+        float brushAreaY = isPencil ? y + 34 * dp : y;
+        float brushAreaH = isPencil ? h - 34 * dp : h;
+        float by2 = brushAreaY + (brushAreaH - btnSize) / 2f;
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0.3f, 0.3f, 0.3f, 1);
         sr.rect(bx, by2, btnSize, btnSize);
@@ -77,7 +82,7 @@ public class BrushSizePopup {
             // Size number
             String sizeStr = String.valueOf(size);
             gl.setText(font, sizeStr);
-            font.draw(batch, sizeStr, x + w / 2f - gl.width / 2f, y + h / 2f + gl.height / 2f);
+            font.draw(batch, sizeStr, x + w / 2f - gl.width / 2f, brushAreaY + brushAreaH / 2f + gl.height / 2f);
             batch.end();
         }
 
@@ -100,6 +105,28 @@ public class BrushSizePopup {
         sr.setColor(Color.WHITE);
         sr.circle(x + w / 2f, y + h - 8 * dp, Math.max(1, size / 2f) * dp);
         sr.end();
+
+        // Pixel Perfect toggle (pencil only)
+        if (isPencil) {
+            boolean pp = ((PencilTool) app.tools[0]).pixelPerfect;
+            float rowY = y + 4 * dp;
+            float boxSize = 16 * dp;
+            float boxX = x + 8 * dp;
+            float boxY = rowY + (30 * dp - boxSize) / 2f;
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            if (pp) {
+                sr.setColor(Color.CYAN);
+                sr.rect(boxX, boxY, boxSize, boxSize);
+            } else {
+                sr.setColor(0.4f, 0.4f, 0.4f, 1);
+                sr.rect(boxX, boxY, boxSize, boxSize);
+            }
+            sr.end();
+            batch.begin();
+            font.setColor(Color.WHITE);
+            font.draw(batch, "Pixel Perfect", boxX + boxSize + 6 * dp, rowY + 20 * dp);
+            batch.end();
+        }
     }
 
     public boolean handleTouch(float tx, float ty) {
@@ -108,8 +135,13 @@ public class BrushSizePopup {
             open = false;
             return true;
         }
+        // Pixel Perfect toggle row
+        if (isPencil && ty < y + 34 * dp) {
+            ((PencilTool) app.tools[0]).pixelPerfect = !((PencilTool) app.tools[0]).pixelPerfect;
+            return true;
+        }
         float bx = x + 8 * dp;
-        float by2 = y + (h - btnSize) / 2f;
+        float by2 = y + (isPencil ? 34 * dp : 0) + (h - (isPencil ? 34 * dp : 0) - btnSize) / 2f;
         // - button
         if (tx >= bx && tx <= bx + btnSize && ty >= by2 && ty <= by2 + btnSize) {
             setSize(getCurrentSize() - 1);

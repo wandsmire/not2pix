@@ -9,7 +9,7 @@ import com.mirwanda.not2pix.Not2Pix;
 
 /**
  * Bottom-center toggle for movement mode, with zoom+ and zoom- buttons on each side.
- * Layout: [Zoom-] [Move Toggle] [Zoom+]
+ * Layout: [Move Toggle] [Zoom-] [Zoom+]
  */
 public class MovementToggle extends UIElement {
 
@@ -33,9 +33,9 @@ public class MovementToggle extends UIElement {
         this.x = (screenWidth - totalW) / 2f;
         this.y = 4 * dp; // bottom center
 
-        zoomMinusX = this.x;
-        toggleX = zoomMinusX + btnSize + 4 * dp;
-        zoomPlusX = toggleX + toggleW + 4 * dp;
+        zoomMinusX = this.x + toggleW + 4 * dp;
+        toggleX = this.x;
+        zoomPlusX = zoomMinusX + btnSize + 4 * dp;
         btnY = this.y + 4 * dp;
     }
 
@@ -44,15 +44,7 @@ public class MovementToggle extends UIElement {
         if (!visible) return;
         float lw = Math.max(2f, 1.5f * dp);
 
-        // Zoom- button
-        sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(0.22f, 0.22f, 0.22f, 0.95f);
-        sr.rect(zoomMinusX, btnY, btnSize, btnSize);
-        sr.setColor(Color.WHITE);
-        sr.rect(zoomMinusX + btnSize * 0.25f, btnY + btnSize * 0.45f, btnSize * 0.5f, lw * 1.5f);
-        sr.end();
-
-        // Movement toggle button
+        // Movement toggle button (leftmost)
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(movementMode ? new Color(0.3f, 0.6f, 0.3f, 1) : new Color(0.4f, 0.25f, 0.25f, 1));
         sr.rect(toggleX, btnY, toggleW, btnSize);
@@ -73,6 +65,14 @@ public class MovementToggle extends UIElement {
         // Left arrow
         sr.rectLine(cx, cy, cx - arrowLen, cy, lw);
         sr.triangle(cx - arrowLen, cy - lw * 2, cx - arrowLen, cy + lw * 2, cx - arrowLen - lw * 2, cy);
+        sr.end();
+
+        // Zoom- button
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(0.22f, 0.22f, 0.22f, 0.95f);
+        sr.rect(zoomMinusX, btnY, btnSize, btnSize);
+        sr.setColor(Color.WHITE);
+        sr.rect(zoomMinusX + btnSize * 0.25f, btnY + btnSize * 0.45f, btnSize * 0.5f, lw * 1.5f);
         sr.end();
 
         // Zoom+ button

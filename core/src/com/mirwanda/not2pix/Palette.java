@@ -42,6 +42,13 @@ public class Palette {
         colors.set(selectedIndex, c);
     }
 
+    /** Set selected color directly from a Color object */
+    public void setFromColor(Color c) {
+        colors.set(selectedIndex, new Color(c));
+        float[] hsv = colorToHSV(c);
+        this.hue = hsv[0]; this.saturation = hsv[1]; this.value = hsv[2]; this.alpha = hsv[3];
+    }
+
     /** Convert HSV (h=0..360, s=0..1, v=0..1) to Color */
     public static Color hsvToColor(float h, float s, float v, float a) {
         float c = v * s;

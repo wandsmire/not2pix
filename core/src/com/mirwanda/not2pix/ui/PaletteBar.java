@@ -18,6 +18,9 @@ public class PaletteBar extends UIPanel {
     private float dp;
     private float swatchSize;
     private static final int MAX_SWATCHES = 18;
+    private static final int COLLAPSED_COUNT = 6;
+    private boolean expanded = false;
+    private float arrowAreaHeight;
     public Runnable onPickerOpen;
     public Runnable onColorPickerTool;
 
@@ -33,6 +36,10 @@ public class PaletteBar extends UIPanel {
     private static final float LONG_PRESS_TIME = 0.5f;
 
     public PaletteBar(Not2Pix app, float screenWidth, float screenHeight, float dp) {
+        this(app, screenWidth, screenHeight, dp, 0);
+    }
+
+    public PaletteBar(Not2Pix app, float screenWidth, float screenHeight, float dp, float bottomOffset) {
         super(0, 0, 48 * dp, 0);
         this.app = app;
         this.dp = dp;
@@ -40,13 +47,17 @@ public class PaletteBar extends UIPanel {
 
         this.width = swatchSize + 6 * dp;
         this.x = screenWidth - this.width;
-        this.height = MAX_SWATCHES * (swatchSize + 2 * dp) + 2 * dp;
-        this.y = 0; // bottom-aligned
+        this.arrowAreaHeight = 20 * dp;
+        this.height = COLLAPSED_COUNT * (swatchSize + 2 * dp) + 2 * dp + arrowAreaHeight;
+        this.y = bottomOffset;
     }
 
     @Override
     public void draw(ShapeRenderer sr, SpriteBatch batch, BitmapFont font) {
         if (!visible) return;
+
+        int visibleCount = expanded ? MAX_SWATCHES : COLLAPSED_COUNT;
+        this.height = visibleCount * (swatchSize + 2 * dp) + 2 * dp + arrowAreaHeight;
 
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(bgColor);
@@ -57,7 +68,7 @@ public class PaletteBar extends UIPanel {
         float pad = (width - swatchSize) / 2f;
 
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        int count = Math.min(MAX_SWATCHES, pal.colors.size());
+        int count = Math.min(visibleCount, pal.colors.size());
         for (int i = 0; i < count; i++) {
             float sy = y + 2 * dp + i * (swatchSize + 2 * dp);
             sr.setColor(pal.colors.get(i));
@@ -67,11 +78,46 @@ public class PaletteBar extends UIPanel {
 
         if (pal.selectedIndex >= 0 && pal.selectedIndex < count) {
             float sy = y + 2 * dp + pal.selectedIndex * (swatchSize + 2 * dp);
+            float sx = x + pad;
+            // Task 8: Thicker cyan double-border for selection
             sr.begin(ShapeRenderer.ShapeType.Line);
-            sr.setColor(Color.WHITE);
-            sr.rect(x + pad - 1, sy - 1, swatchSize + 2, swatchSize + 2);
+            sr.setColor(Color.CYAN);
+            sr.rect(sx - 2, sy - 2, swatchSize + 4, swatchSize + 4);
+            sr.rect(sx - 1, sy - 1, swatchSize + 2, swatchSize + 2);
             sr.end();
+
+            // Task 7: Crosshair overlay when color picker is active
+            if (app.colorPickerActive) {
+                float cx = sx + swatchSize / 2f;
+                float cy = sy + swatchSize / 2f;
+                float arm = swatchSize * 0.3f;
+                sr.begin(ShapeRenderer.ShapeType.Line);
+                sr.setColor(Color.WHITE);
+                sr.line(cx - arm, cy, cx + arm, cy);
+                sr.line(cx, cy - arm, cx, cy + arm);
+                sr.circle(cx, cy, arm * 0.6f);
+                sr.end();
+            }
         }
+
+        // Draw arrow indicator at the top of the palette bar
+        float arrowCx = x + width / 2f;
+        float arrowCy = y + height - arrowAreaHeight / 2f;
+        float arrowSize = 6 * dp;
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(Color.LIGHT_GRAY);
+        if (expanded) {
+            // Down arrow (tap to collapse)
+            sr.triangle(arrowCx - arrowSize, arrowCy + arrowSize * 0.5f,
+                        arrowCx + arrowSize, arrowCy + arrowSize * 0.5f,
+                        arrowCx, arrowCy - arrowSize * 0.5f);
+        } else {
+            // Up arrow (tap to expand)
+            sr.triangle(arrowCx - arrowSize, arrowCy - arrowSize * 0.5f,
+                        arrowCx + arrowSize, arrowCy - arrowSize * 0.5f,
+                        arrowCx, arrowCy + arrowSize * 0.5f);
+        }
+        sr.end();
 
         checkLongPress();
     }
@@ -87,15 +133,31 @@ public class PaletteBar extends UIPanel {
         if (elapsed >= LONG_PRESS_TIME && dy < 12 * dp) {
             longPressTriggered = true;
             needsLongPressCheck = false;
-            if (onColorPickerTool != null) onColorPickerTool.run();
+            if (onColorPickerTool != null) {
+                // Don't activate picker when selection tool has active selection
+                if (app.tools[app.activeToolIndex] instanceof com.mirwanda.not2pix.SelectionTool) {
+                    com.mirwanda.not2pix.SelectionTool sel = (com.mirwanda.not2pix.SelectionTool) app.tools[app.activeToolIndex];
+                    if (sel.buffer != null) return;
+                }
+                onColorPickerTool.run();
+            }
         }
     }
 
     public boolean handleTouch(float touchX, float touchY) {
         if (!hit(touchX, touchY)) return false;
 
+        // Check arrow area at the top
+        float arrowTop = y + height;
+        float arrowBottom = y + height - arrowAreaHeight;
+        if (touchY >= arrowBottom && touchY <= arrowTop) {
+            expanded = !expanded;
+            return true;
+        }
+
         Palette pal = app.palette;
-        int count = Math.min(MAX_SWATCHES, pal.colors.size());
+        int visibleCount = expanded ? MAX_SWATCHES : COLLAPSED_COUNT;
+        int count = Math.min(visibleCount, pal.colors.size());
         int vi = (int) ((touchY - y - 2 * dp) / (swatchSize + 2 * dp));
         if (vi < 0 || vi >= count) return true;
 
@@ -117,6 +179,10 @@ public class PaletteBar extends UIPanel {
         lastTapTime = now;
         lastTapIndex = vi;
         pal.selectedIndex = vi;
+        // Deactivate color picker if it was active
+        if (app.colorPickerActive) {
+            app.colorPickerActive = false;
+        }
 
         return true;
     }
