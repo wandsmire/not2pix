@@ -32,7 +32,7 @@
 - 🎛️ **HSV color picker** — Vertical hue bar, SV gradient, old/new color preview with checkerboard, alpha slider
 - 🎨 **Palette bar** — Collapsible (6 colors default, expandable), double-tap to edit, longpress for eyedropper
 - ⚙️ **Preferences** — Configurable grid color, tile grid color, background color (persistent)
-- 🔗 **NotTiled integration** — Edit tilesets directly from [NotTiled](https://github.com/AidanMirwanda) via intents
+- 🔗 **NotTiled integration** — Edit tilesets directly from [NotTiled](https://github.com/wandsmire/NotTiled) via intents
 - ↩️ **Undo/Redo** — Full undo history (disabled during active selection for safety)
 - 📱 **Touch-optimized** — Bottom strip for curved screens, gesture support for pan, zoom, and drawing
 - 📁 **Multi-document** — Tab strip with close buttons, + button for new documents
