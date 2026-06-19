@@ -612,6 +612,8 @@ public class EditorUI {
         }
     }
 
+    public BitmapFont getFont() { return font; }
+
     public void dispose() {
         sr.dispose();
         batch.dispose();

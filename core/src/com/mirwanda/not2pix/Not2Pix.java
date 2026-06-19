@@ -370,6 +370,15 @@ public class Not2Pix extends ApplicationAdapter {
             shapeRenderer.rectLine(wx + sw2, wy + sh2, wx, wy + sh2, lw);
             shapeRenderer.rectLine(wx, wy + sh2, wx, wy, lw);
             shapeRenderer.end();
+
+            // Draw selection size label below
+            batch.begin();
+            float fontSize = 1f / zoom;
+            ui.getFont().getData().setScale(fontSize);
+            ui.getFont().setColor(Color.WHITE);
+            ui.getFont().draw(batch, sel.selW + "x" + sel.selH, wx, wy - 0.5f);
+            ui.getFont().getData().setScale(Math.max(1.0f, 1.1f * (float) Math.max(1, com.badlogic.gdx.Gdx.graphics.getDensity())));
+            batch.end();
         }
 
         // Draw grid
