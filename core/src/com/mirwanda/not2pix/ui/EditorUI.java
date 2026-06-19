@@ -37,6 +37,7 @@ public class EditorUI {
     public DocStrip docStrip;
     public PreferencesDialog prefsDialog;
     public ColorAdjustDialog colorAdjustDialog;
+    public CanvasResizeDialog canvasResizeDialog;
 
     private boolean touchHandled = false;
     private enum DragTarget { NONE, FRAME_STRIP, LAYER_PANEL, HSV_PICKER, MINIMAP, DOC_STRIP }
@@ -92,6 +93,7 @@ public class EditorUI {
         docStrip.onCloseDoc = () -> confirmDialog.show("Close document?", () -> app.closeDocument());
         prefsDialog = new PreferencesDialog(app, dp);
         colorAdjustDialog = new ColorAdjustDialog(dp);
+        canvasResizeDialog = new CanvasResizeDialog(app, dp);
 
         paletteBar.onPickerOpen = () -> hsvPicker.show();
         paletteBar.onColorPickerTool = () -> {
@@ -120,6 +122,18 @@ public class EditorUI {
         prefsDialog.onGridColor = () -> hsvPicker.showForColor(app.gridColor, () -> app.savePrefs());
         prefsDialog.onTileGridColor = () -> hsvPicker.showForColor(app.tileGridColor, () -> app.savePrefs());
         prefsDialog.onBgColor = () -> hsvPicker.showForColor(app.bgColor, () -> app.savePrefs());
+        prefsDialog.onCheckerLight = () -> hsvPicker.showForColor(app.checkerLight, () -> app.savePrefs());
+        prefsDialog.onCheckerDark = () -> hsvPicker.showForColor(app.checkerDark, () -> app.savePrefs());
+        prefsDialog.onTileSize = () -> tileSizePopup.show(0, 0);
+        prefsDialog.onMinimapSize = () -> {
+            Gdx.input.getTextInput(new com.badlogic.gdx.Input.TextInputListener() {
+                @Override public void input(String text) {
+                    try { int v = Integer.parseInt(text.trim()); if (v >= 32 && v <= 256) { app.minimapSize = v; app.savePrefs(); } } catch (NumberFormatException e) {}
+                }
+                @Override public void canceled() {}
+            }, "Minimap Size", String.valueOf(app.minimapSize), "32-256 dp");
+        };
+        fileMenu.onResizeCanvas = () -> canvasResizeDialog.show();
     }
 
     public void draw() {
@@ -145,6 +159,7 @@ public class EditorUI {
         tileSizePopup.draw(sr, batch, font);
         zoomPopup.draw(sr, batch, font);
         newCanvasDialog.draw(sr, batch, font);
+        canvasResizeDialog.draw(sr, batch, font);
         prefsDialog.draw(sr, batch, font);
         colorAdjustDialog.draw(sr, batch, font);
         confirmDialog.draw(sr, batch, font);
@@ -235,6 +250,7 @@ public class EditorUI {
         if (colorAdjustDialog.open) { colorAdjustDialog.handleTouch(tx, ty); touchHandled = true; activeDrag = DragTarget.HSV_PICKER; return true; }
         if (prefsDialog.open) { prefsDialog.handleTouch(tx, ty); touchHandled = true; return true; }
         if (newCanvasDialog.open) { newCanvasDialog.handleTouch(tx, ty); touchHandled = true; return true; }
+        if (canvasResizeDialog.open) { canvasResizeDialog.handleTouch(tx, ty); touchHandled = true; return true; }
         if (brushSizePopup.open) { brushSizePopup.handleTouch(tx, ty); touchHandled = true; return true; }
         if (tileSizePopup.open) { tileSizePopup.handleTouch(tx, ty); touchHandled = true; return true; }
         if (zoomPopup.open) { zoomPopup.handleTouch(tx, ty); touchHandled = true; return true; }
@@ -399,8 +415,8 @@ public class EditorUI {
         sr.rectLine(cx + 8 * dp, row1Y + btnSize - 8 * dp, cx + btnSize - 8 * dp, row1Y + 8 * dp, lw);
         sr.end();
 
-        // Row 2: Copy, Rot90, MirrorH, MirrorV, FreeRot, Effect
-        int numBtns = 7;
+        // Row 2: Copy, Rot90, MirrorH, MirrorV, FreeRot, Outline, ColorAdj, Crop
+        int numBtns = 8;
         float row2W = btnSize * numBtns + gap * (numBtns - 1);
         float row2X = Gdx.graphics.getWidth() / 2f - row2W / 2f;
         float row2Y = baseY;
@@ -473,6 +489,16 @@ public class EditorUI {
         sr.rectLine(bx + 6 * dp, row2Y + btnSize * 0.5f, bx + btnSize - 6 * dp, row2Y + btnSize * 0.5f, lw);
         sr.setColor(Color.RED);
         sr.rectLine(bx + 6 * dp, row2Y + btnSize * 0.7f, bx + btnSize - 6 * dp, row2Y + btnSize * 0.7f, lw);
+
+        // Crop (dark red, scissors icon)
+        bx += btnSize + gap;
+        sr.setColor(0.5f, 0.2f, 0.1f, 1);
+        sr.rect(bx, row2Y, btnSize, btnSize);
+        sr.setColor(Color.WHITE);
+        sr.rectLine(bx + 6 * dp, row2Y + 6 * dp, bx + btnSize - 6 * dp, row2Y + btnSize - 6 * dp, lw);
+        sr.rectLine(bx + btnSize - 6 * dp, row2Y + 6 * dp, bx + 6 * dp, row2Y + btnSize - 6 * dp, lw);
+        sr.rectLine(bx + 6 * dp, row2Y + 6 * dp, bx + 6 * dp, row2Y + btnSize - 6 * dp, lw);
+        sr.rectLine(bx + btnSize - 6 * dp, row2Y + 6 * dp, bx + btnSize - 6 * dp, row2Y + btnSize - 6 * dp, lw);
         sr.end();
     }
 
@@ -504,8 +530,8 @@ public class EditorUI {
             return true;
         }
 
-        // Row 2: Copy, Rot90, MirrorH, MirrorV, FreeRot, Effect
-        int numBtns = 7;
+        // Row 2: Copy, Rot90, MirrorH, MirrorV, FreeRot, Outline, ColorAdj, Crop
+        int numBtns = 8;
         float row2W = btnSize * numBtns + gap * (numBtns - 1);
         float row2X = Gdx.graphics.getWidth() / 2f - row2W / 2f;
         float row2Y = baseY;
@@ -561,6 +587,16 @@ public class EditorUI {
                 break;
             case 6: // Color adjust
                 colorAdjustDialog.show(sel);
+                break;
+            case 7: // Crop to selection
+                confirmDialog.show("Crop canvas to selection?\nUndo history will be lost.", () -> {
+                    if (sel.buffer != null) {
+                        sel.commitSelection(app.layers.get(app.activeLayerIndex).pixmap);
+                        app.layers.get(app.activeLayerIndex).markDirty();
+                    }
+                    app.cropToSelection(sel.selX, sel.selY, sel.selW, sel.selH);
+                    sel.hasSelection = false;
+                });
                 break;
         }
         return true;

@@ -23,26 +23,82 @@ public class FrameStrip extends UIPanel {
     private float scrollOffsetX = 0;
     private float lastDragX = -1;
     public boolean dragging = false;
+    public boolean open = false;
+    private float toggleBtnW, toggleBtnH, toggleBtnX, toggleBtnY;
 
     public FrameStrip(Not2Pix app, float screenWidth, float screenHeight, float dp) {
-        super(0, screenHeight - 28 * dp - 28 * dp - 52 * dp, screenWidth, 52 * dp);
+        super(0, screenHeight - 28 * dp - 28 * dp - 82 * dp, screenWidth, 82 * dp);
         this.app = app;
         this.dp = dp;
         this.thumbSize = 40 * dp;
         this.btnSize = 28 * dp;
-        this.thumbStartX = 130 * dp; // after buttons
+        this.toggleBtnW = 44 * dp;
+        this.toggleBtnH = 32 * dp;
+        this.thumbStartX = 4 * dp; // thumbnails start at left now
     }
 
     @Override
     public void draw(ShapeRenderer sr, SpriteBatch batch, BitmapFont font) {
         if (!visible) return;
 
+        // Toggle button (always visible, at right side)
+        toggleBtnX = x + width - toggleBtnW - 4 * dp;
+        if (open) {
+            toggleBtnY = y - toggleBtnH;
+        } else {
+            toggleBtnY = y + height - toggleBtnH;
+        }
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        sr.setColor(0.25f, 0.25f, 0.25f, 1);
+        sr.rect(toggleBtnX, toggleBtnY, toggleBtnW, toggleBtnH);
+        sr.setColor(Color.LIGHT_GRAY);
+        float arrowCx = toggleBtnX + toggleBtnW / 2f;
+        float arrowCy = toggleBtnY + toggleBtnH / 2f;
+        float arrowR = 4 * dp;
+        if (open) {
+            sr.triangle(arrowCx - arrowR, arrowCy - arrowR * 0.4f, arrowCx + arrowR, arrowCy - arrowR * 0.4f, arrowCx, arrowCy + arrowR * 0.6f);
+        } else {
+            sr.triangle(arrowCx - arrowR, arrowCy + arrowR * 0.4f, arrowCx + arrowR, arrowCy + arrowR * 0.4f, arrowCx, arrowCy - arrowR * 0.6f);
+        }
+        sr.end();
+
+        if (!open) return;
+
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(bgColor);
         sr.rect(x, y, width, height);
         sr.end();
 
-        float by = y + 10 * dp;
+        // Frame thumbnails - top row
+        float ty = y + btnSize + 10 * dp;
+        for (int i = 0; i < app.frames.size(); i++) {
+            float frameX = thumbStartX - scrollOffsetX + i * (thumbSize + 6 * dp);
+            if (frameX + thumbSize + 4 * dp < 0 || frameX > x + width) continue;
+
+            boolean active = (i == app.currentFrameIndex);
+            AnimFrame frame = app.frames.get(i);
+
+            sr.begin(ShapeRenderer.ShapeType.Filled);
+            sr.setColor(active ? new Color(0.4f, 0.65f, 1f, 1) : new Color(0.28f, 0.28f, 0.28f, 1));
+            sr.rect(frameX, ty, thumbSize + 4 * dp, thumbSize + 4 * dp);
+            sr.end();
+
+            if (frame.texture != null) {
+                batch.begin();
+                batch.draw(frame.texture, frameX + 2 * dp, ty + 2 * dp, thumbSize, thumbSize);
+                batch.end();
+            }
+
+            if (font != null) {
+                batch.begin();
+                font.setColor(Color.WHITE);
+                font.draw(batch, String.valueOf(i + 1), frameX + 4 * dp, ty + thumbSize);
+                batch.end();
+            }
+        }
+
+        // Buttons - bottom row
+        float by = y + 4 * dp;
         float bx = x + 4 * dp;
 
         // Play/Stop
@@ -67,36 +123,6 @@ public class FrameStrip extends UIPanel {
         bx += btnSize + 2 * dp;
         // Del frame
         drawCtrlBtn(sr, batch, font, "X", bx, by);
-
-        // Frame thumbnails - only draw if x >= thumbStartX (clips behind buttons)
-        float ty = y + 4 * dp;
-        for (int i = 0; i < app.frames.size(); i++) {
-            float frameX = thumbStartX - scrollOffsetX + i * (thumbSize + 6 * dp);
-            // Clip: only draw if visible and not overlapping buttons
-            if (frameX + thumbSize + 4 * dp < thumbStartX || frameX > x + width) continue;
-            if (frameX < thumbStartX) continue; // don't draw partially behind buttons
-
-            boolean active = (i == app.currentFrameIndex);
-            AnimFrame frame = app.frames.get(i);
-
-            sr.begin(ShapeRenderer.ShapeType.Filled);
-            sr.setColor(active ? new Color(0.4f, 0.65f, 1f, 1) : new Color(0.28f, 0.28f, 0.28f, 1));
-            sr.rect(frameX, ty, thumbSize + 4 * dp, thumbSize + 4 * dp);
-            sr.end();
-
-            if (frame.texture != null) {
-                batch.begin();
-                batch.draw(frame.texture, frameX + 2 * dp, ty + 2 * dp, thumbSize, thumbSize);
-                batch.end();
-            }
-
-            if (font != null) {
-                batch.begin();
-                font.setColor(Color.WHITE);
-                font.draw(batch, String.valueOf(i + 1), frameX + 4 * dp, ty + thumbSize);
-                batch.end();
-            }
-        }
     }
 
     private void drawCtrlBtn(ShapeRenderer sr, SpriteBatch batch, BitmapFont font,
@@ -115,27 +141,37 @@ public class FrameStrip extends UIPanel {
     }
 
     public boolean handleTouch(float touchX, float touchY) {
-        if (!hit(touchX, touchY)) return false;
-
-        float by = y + 10 * dp;
-        float bx = x + 4 * dp;
-
-        if (touchX >= bx && touchX <= bx + btnSize && touchY >= by && touchY <= by + btnSize) {
-            app.togglePlayback(); return true;
-        }
-        bx += btnSize + 3 * dp;
-
-        if (touchX >= bx && touchX <= bx + btnSize && touchY >= by && touchY <= by + btnSize) { app.addFrame(); return true; }
-        bx += btnSize + 2 * dp;
-        if (touchX >= bx && touchX <= bx + btnSize && touchY >= by && touchY <= by + btnSize) { app.duplicateFrame(); return true; }
-        bx += btnSize + 2 * dp;
-        if (touchX >= bx && touchX <= bx + btnSize && touchY >= by && touchY <= by + btnSize) {
-            if (onDeleteFrame != null) onDeleteFrame.run(); else app.deleteFrame();
+        // Toggle button
+        if (touchX >= toggleBtnX && touchX <= toggleBtnX + toggleBtnW &&
+            touchY >= toggleBtnY && touchY <= toggleBtnY + toggleBtnH) {
+            open = !open;
+            app.frameStripOpen = open;
             return true;
         }
 
-        // Thumbnail area
-        if (touchX >= thumbStartX) {
+        if (!open) return false;
+        if (!hit(touchX, touchY)) return false;
+
+        // Button row (bottom)
+        float by = y + 4 * dp;
+        float bx = x + 4 * dp;
+
+        if (touchY >= by && touchY <= by + btnSize) {
+            if (touchX >= bx && touchX <= bx + btnSize) { app.togglePlayback(); return true; }
+            bx += btnSize + 3 * dp;
+            if (touchX >= bx && touchX <= bx + btnSize) { app.addFrame(); return true; }
+            bx += btnSize + 2 * dp;
+            if (touchX >= bx && touchX <= bx + btnSize) { app.duplicateFrame(); return true; }
+            bx += btnSize + 2 * dp;
+            if (touchX >= bx && touchX <= bx + btnSize) {
+                if (onDeleteFrame != null) onDeleteFrame.run(); else app.deleteFrame();
+                return true;
+            }
+        }
+
+        // Thumbnail area (top)
+        float ty = y + btnSize + 10 * dp;
+        if (touchY >= ty) {
             lastDragX = touchX;
             dragging = true;
             int idx = (int) ((touchX - thumbStartX + scrollOffsetX) / (thumbSize + 6 * dp));

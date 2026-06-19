@@ -82,7 +82,8 @@ public class LayerPanel extends UIPanel {
 
         float listBottom = y + btnRowHeight;
         float listTop = y + height;
-        float lh = 34 * dp;
+        float thumbW = panelWidth - 24 * dp;
+        float lh = getItemHeight();
         float startY = listBottom + scrollOffsetY;
 
         for (int i = 0; i < app.layers.size(); i++) {
@@ -101,15 +102,24 @@ public class LayerPanel extends UIPanel {
                     sr.rect(x + 4 * dp, itemY, panelWidth - 8 * dp, lh - 2 * dp);
                     sr.end();
 
-                    // Eye icon
-                    drawEyeIcon(sr, x + 16 * dp, itemY + lh / 2f, 5 * dp, layer.visible);
+                    // Eye icon + name on top row
+                    float nameRowY = itemY + lh - 18 * dp;
+                    drawEyeIcon(sr, x + 16 * dp, nameRowY, 5 * dp, layer.visible);
 
                     if (font != null) {
                         batch.begin();
                         font.setColor(layer.visible ? Color.WHITE : Color.GRAY);
-                        font.draw(batch, layer.name, x + 30 * dp, itemY + lh * 0.65f);
+                        font.draw(batch, layer.name, x + 30 * dp, nameRowY + font.getCapHeight() / 2f);
                         batch.end();
                     }
+
+                    // Large thumbnail below name
+                    float thumbX = x + 12 * dp;
+                    float thumbY = itemY + 4 * dp;
+                    layer.refreshTexture();
+                    batch.begin();
+                    batch.draw(layer.texture, thumbX, thumbY, thumbW, thumbW);
+                    batch.end();
                 }
             }
             startY += lh;
@@ -200,9 +210,14 @@ public class LayerPanel extends UIPanel {
         }
     }
 
+    private float getItemHeight() {
+        float thumbW = panelWidth - 24 * dp;
+        return 20 * dp + thumbW + 6 * dp;
+    }
+
     private int getReorderTargetIndex() {
         float listBottom = y + btnRowHeight;
-        float lh = 34 * dp;
+        float lh = getItemHeight();
         float relY = reorderDragY - listBottom - scrollOffsetY;
         int target = MathUtils.clamp((int) (relY / lh), 0, app.layers.size());
         return target;
@@ -255,7 +270,7 @@ public class LayerPanel extends UIPanel {
         float listBottom = y + btnRowHeight;
         if (touchY < listBottom) return true;
 
-        float lh = 34 * dp;
+        float lh = getItemHeight();
         float startY2 = listBottom + scrollOffsetY;
         for (int i = 0; i < app.layers.size(); i++) {
             if (touchY >= startY2 && touchY <= startY2 + lh && startY2 >= listBottom) {
@@ -308,7 +323,7 @@ public class LayerPanel extends UIPanel {
         }
         if (lastDragY >= 0) {
             float dy = touchY - lastDragY;
-            float lh = 34 * dp;
+            float lh = getItemHeight();
             float listHeight = height - btnRowHeight;
             float contentHeight = app.layers.size() * lh;
             float maxScroll = Math.max(0, contentHeight - listHeight);

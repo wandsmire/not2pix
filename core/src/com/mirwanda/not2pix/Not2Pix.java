@@ -57,6 +57,13 @@ public class Not2Pix extends ApplicationAdapter {
     public Color gridColor = new Color(0, 0, 0, 0.5f);
     public Color tileGridColor = new Color(0, 0, 0, 0.7f);
     public Color bgColor = new Color(0.12f, 0.12f, 0.12f, 1f);
+    public Color checkerLight = new Color(0.9f, 0.9f, 0.9f, 1f);
+    public Color checkerDark = new Color(0.7f, 0.7f, 0.7f, 1f);
+
+    // Minimap settings
+    public boolean showMinimap = true;
+    public int minimapSize = 96; // dp units
+    public boolean frameStripOpen = false;
 
     // Mirror modifiers
     public boolean mirrorX = false;
@@ -660,19 +667,23 @@ public class Not2Pix extends ApplicationAdapter {
     }
 
     private Texture checkerboardTex;
+    private int lastCheckerLight, lastCheckerDark;
 
     private void drawCheckerboard() {
-        if (checkerboardTex == null) {
+        int cl = Color.rgba8888(checkerLight);
+        int cd = Color.rgba8888(checkerDark);
+        if (checkerboardTex == null || cl != lastCheckerLight || cd != lastCheckerDark) {
+            if (checkerboardTex != null) checkerboardTex.dispose();
             Pixmap pm = new Pixmap(2, 2, Pixmap.Format.RGBA8888);
             pm.setBlending(Pixmap.Blending.None);
-            int light = Color.rgba8888(0.9f, 0.9f, 0.9f, 1f);
-            int dark = Color.rgba8888(0.7f, 0.7f, 0.7f, 1f);
-            pm.drawPixel(0, 0, light); pm.drawPixel(1, 0, dark);
-            pm.drawPixel(0, 1, dark);  pm.drawPixel(1, 1, light);
+            pm.drawPixel(0, 0, cl); pm.drawPixel(1, 0, cd);
+            pm.drawPixel(0, 1, cd);  pm.drawPixel(1, 1, cl);
             checkerboardTex = new Texture(pm);
             checkerboardTex.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             checkerboardTex.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
             pm.dispose();
+            lastCheckerLight = cl;
+            lastCheckerDark = cd;
         }
         batch.begin();
         batch.draw(checkerboardTex, 0, 0, canvasWidth, canvasHeight,
@@ -784,6 +795,74 @@ public class Not2Pix extends ApplicationAdapter {
 
     public void newCanvas(int w, int h) {
         newDocument(w, h);
+    }
+
+    /** Crop all layers and frames to the given rectangle. */
+    public void cropToSelection(int cx, int cy, int cw, int ch) {
+        // Crop all layers
+        for (Layer l : layers) {
+            Pixmap cropped = new Pixmap(cw, ch, Pixmap.Format.RGBA8888);
+            cropped.setBlending(Pixmap.Blending.None);
+            cropped.drawPixmap(l.pixmap, 0, 0, cx, cy, cw, ch);
+            l.pixmap.dispose();
+            l.pixmap = cropped;
+            l.markDirty();
+        }
+        // Crop animation frames
+        for (AnimFrame f : frames) {
+            Pixmap cropped = new Pixmap(cw, ch, Pixmap.Format.RGBA8888);
+            cropped.setBlending(Pixmap.Blending.None);
+            cropped.drawPixmap(f.pixmap, 0, 0, cx, cy, cw, ch);
+            f.pixmap.dispose();
+            f.pixmap = cropped;
+            f.refreshTexture();
+        }
+        canvasWidth = cw;
+        canvasHeight = ch;
+        undoManager.clear();
+        undoManager.setCanvasSize(cw, ch);
+        if (documents.size() > activeDocIndex) {
+            documents.get(activeDocIndex).canvasWidth = cw;
+            documents.get(activeDocIndex).canvasHeight = ch;
+        }
+        fitToWidth();
+    }
+
+    /** Resize canvas to new dimensions. If stretch is true, scale content; otherwise just crop/expand. */
+    public void resizeCanvas(int newW, int newH, boolean stretch) {
+        for (Layer l : layers) {
+            Pixmap resized = new Pixmap(newW, newH, Pixmap.Format.RGBA8888);
+            resized.setBlending(Pixmap.Blending.None);
+            if (stretch) {
+                resized.drawPixmap(l.pixmap, 0, 0, canvasWidth, canvasHeight, 0, 0, newW, newH);
+            } else {
+                resized.drawPixmap(l.pixmap, 0, 0);
+            }
+            l.pixmap.dispose();
+            l.pixmap = resized;
+            l.markDirty();
+        }
+        for (AnimFrame f : frames) {
+            Pixmap resized = new Pixmap(newW, newH, Pixmap.Format.RGBA8888);
+            resized.setBlending(Pixmap.Blending.None);
+            if (stretch) {
+                resized.drawPixmap(f.pixmap, 0, 0, canvasWidth, canvasHeight, 0, 0, newW, newH);
+            } else {
+                resized.drawPixmap(f.pixmap, 0, 0);
+            }
+            f.pixmap.dispose();
+            f.pixmap = resized;
+            f.refreshTexture();
+        }
+        canvasWidth = newW;
+        canvasHeight = newH;
+        undoManager.clear();
+        undoManager.setCanvasSize(newW, newH);
+        if (documents.size() > activeDocIndex) {
+            documents.get(activeDocIndex).canvasWidth = newW;
+            documents.get(activeDocIndex).canvasHeight = newH;
+        }
+        fitToWidth();
     }
 
     public void openFile() { platform.openFile(); }
@@ -1098,6 +1177,15 @@ public class Not2Pix extends ApplicationAdapter {
         gridColor.set(p.getFloat("gridR", 0), p.getFloat("gridG", 0), p.getFloat("gridB", 0), p.getFloat("gridA", 0.5f));
         tileGridColor.set(p.getFloat("tgridR", 0), p.getFloat("tgridG", 0), p.getFloat("tgridB", 0), p.getFloat("tgridA", 0.7f));
         bgColor.set(p.getFloat("bgR", 0.12f), p.getFloat("bgG", 0.12f), p.getFloat("bgB", 0.12f), p.getFloat("bgA", 1f));
+        checkerLight.set(p.getFloat("chkLR", 0.9f), p.getFloat("chkLG", 0.9f), p.getFloat("chkLB", 0.9f), 1f);
+        checkerDark.set(p.getFloat("chkDR", 0.7f), p.getFloat("chkDG", 0.7f), p.getFloat("chkDB", 0.7f), 1f);
+        tileSize = p.getInteger("tileSize", 0);
+        showGrid = p.getBoolean("showGrid", true);
+        mirrorX = p.getBoolean("mirrorX", false);
+        mirrorY = p.getBoolean("mirrorY", false);
+        onionSkin = p.getBoolean("onionSkin", false);
+        showMinimap = p.getBoolean("showMinimap", true);
+        minimapSize = p.getInteger("minimapSize", 96);
     }
 
     public void savePrefs() {
@@ -1105,7 +1193,73 @@ public class Not2Pix extends ApplicationAdapter {
         p.putFloat("gridR", gridColor.r); p.putFloat("gridG", gridColor.g); p.putFloat("gridB", gridColor.b); p.putFloat("gridA", gridColor.a);
         p.putFloat("tgridR", tileGridColor.r); p.putFloat("tgridG", tileGridColor.g); p.putFloat("tgridB", tileGridColor.b); p.putFloat("tgridA", tileGridColor.a);
         p.putFloat("bgR", bgColor.r); p.putFloat("bgG", bgColor.g); p.putFloat("bgB", bgColor.b); p.putFloat("bgA", bgColor.a);
+        p.putFloat("chkLR", checkerLight.r); p.putFloat("chkLG", checkerLight.g); p.putFloat("chkLB", checkerLight.b);
+        p.putFloat("chkDR", checkerDark.r); p.putFloat("chkDG", checkerDark.g); p.putFloat("chkDB", checkerDark.b);
+        p.putInteger("tileSize", tileSize);
+        p.putBoolean("showGrid", showGrid);
+        p.putBoolean("mirrorX", mirrorX);
+        p.putBoolean("mirrorY", mirrorY);
+        p.putBoolean("onionSkin", onionSkin);
+        p.putBoolean("showMinimap", showMinimap);
+        p.putInteger("minimapSize", minimapSize);
         p.flush();
+    }
+
+    @Override
+    public void pause() {
+        // Save layers to local temp files
+        for (int i = 0; i < layers.size(); i++) {
+            PixmapIO.writePNG(Gdx.files.local("temp/layer_" + i + ".png"), layers.get(i).pixmap);
+        }
+        // Save state
+        Preferences p = Gdx.app.getPreferences("Not2Pix");
+        p.putFloat("viewZoom", zoom);
+        p.putFloat("viewPanX", panX);
+        p.putFloat("viewPanY", panY);
+        p.putInteger("tempLayerCount", layers.size());
+        p.putInteger("tempCanvasW", canvasWidth);
+        p.putInteger("tempCanvasH", canvasHeight);
+        p.putBoolean("tempSaved", true);
+        p.flush();
+    }
+
+    @Override
+    public void resume() {
+        Preferences p = Gdx.app.getPreferences("Not2Pix");
+        if (!p.getBoolean("tempSaved", false)) return;
+        int count = p.getInteger("tempLayerCount", 0);
+        int tw = p.getInteger("tempCanvasW", canvasWidth);
+        int th = p.getInteger("tempCanvasH", canvasHeight);
+        if (count > 0 && tw > 0 && th > 0) {
+            canvasWidth = tw;
+            canvasHeight = th;
+            for (int i = 0; i < layers.size(); i++) layers.get(i).dispose();
+            layers.clear();
+            for (int i = 0; i < count; i++) {
+                com.badlogic.gdx.files.FileHandle f = Gdx.files.local("temp/layer_" + i + ".png");
+                if (f.exists()) {
+                    Pixmap pm = new Pixmap(f);
+                    Layer l = new Layer("Layer " + (i + 1), tw, th);
+                    l.pixmap.dispose();
+                    l.pixmap = pm;
+                    l.markDirty();
+                    layers.add(l);
+                }
+            }
+            if (layers.isEmpty()) layers.add(new Layer("Background", tw, th));
+            if (activeLayerIndex >= layers.size()) activeLayerIndex = 0;
+        }
+        // Restore zoom/pan
+        zoom = p.getFloat("viewZoom", zoom);
+        panX = p.getFloat("viewPanX", panX);
+        panY = p.getFloat("viewPanY", panY);
+        p.putBoolean("tempSaved", false);
+        p.flush();
+        // Clean up temp files
+        for (int i = 0; i < count; i++) {
+            com.badlogic.gdx.files.FileHandle f = Gdx.files.local("temp/layer_" + i + ".png");
+            if (f.exists()) f.delete();
+        }
     }
 
     @Override

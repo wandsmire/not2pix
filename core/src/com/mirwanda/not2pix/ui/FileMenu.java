@@ -28,6 +28,7 @@ public class FileMenu {
     public Runnable onSaveAse;
     public Runnable onLoadAse;
     public Runnable onPreferences;
+    public Runnable onResizeCanvas;
     private ArrayList<String> labels = new ArrayList<>();
     private ArrayList<Runnable> actions = new ArrayList<>();
 
@@ -58,6 +59,7 @@ public class FileMenu {
         labels.add("Export GIF"); actions.add(() -> { if (onExportGif != null) onExportGif.run(); });
         labels.add("Save .ase"); actions.add(() -> { if (onSaveAse != null) onSaveAse.run(); });
         labels.add("Load .ase"); actions.add(() -> { if (onLoadAse != null) onLoadAse.run(); });
+        labels.add("Resize Canvas"); actions.add(() -> { if (onResizeCanvas != null) onResizeCanvas.run(); });
         labels.add("Preferences"); actions.add(() -> { if (onPreferences != null) onPreferences.run(); });
         labels.add("Exit"); actions.add(() -> { if (onExit != null) onExit.run(); });
 

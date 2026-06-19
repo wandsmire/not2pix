@@ -93,21 +93,21 @@ public class BottomStrip extends UIPanel {
         sr.triangle(cx - arrowLen, cy - lw * 2, cx - arrowLen, cy + lw * 2, cx - arrowLen - lw * 2, cy);
         sr.end();
 
-        // Zoom- button
+        // Zoom+ button (left of pair)
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0.22f, 0.22f, 0.22f, 0.95f);
         sr.rect(zoomMinusX, btnY, btnSize, btnSize);
         sr.setColor(Color.WHITE);
         sr.rect(zoomMinusX + btnSize * 0.25f, btnY + btnSize * 0.45f, btnSize * 0.5f, lw * 1.5f);
+        sr.rect(zoomMinusX + btnSize * 0.45f, btnY + btnSize * 0.25f, lw * 1.5f, btnSize * 0.5f);
         sr.end();
 
-        // Zoom+ button
+        // Zoom- button (right of pair)
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0.22f, 0.22f, 0.22f, 0.95f);
         sr.rect(zoomPlusX, btnY, btnSize, btnSize);
         sr.setColor(Color.WHITE);
         sr.rect(zoomPlusX + btnSize * 0.25f, btnY + btnSize * 0.45f, btnSize * 0.5f, lw * 1.5f);
-        sr.rect(zoomPlusX + btnSize * 0.45f, btnY + btnSize * 0.25f, lw * 1.5f, btnSize * 0.5f);
         sr.end();
 
         // Undo button
@@ -162,8 +162,8 @@ public class BottomStrip extends UIPanel {
 
         if (touchX >= fitX && touchX <= fitX + btnSize) { app.fitToWidth(); return true; }
         if (touchX >= toggleX && touchX <= toggleX + toggleW) { movementMode = !movementMode; return true; }
-        if (touchX >= zoomMinusX && touchX <= zoomMinusX + btnSize) { app.zoomOut(); return true; }
-        if (touchX >= zoomPlusX && touchX <= zoomPlusX + btnSize) { app.zoomIn(); return true; }
+        if (touchX >= zoomMinusX && touchX <= zoomMinusX + btnSize) { app.zoomIn(); return true; }
+        if (touchX >= zoomPlusX && touchX <= zoomPlusX + btnSize) { app.zoomOut(); return true; }
         if (touchX >= undoX && touchX <= undoX + btnSize) { if (!isSelectionActive()) app.undo(); return true; }
         if (touchX >= redoX && touchX <= redoX + btnSize) { if (!isSelectionActive()) app.redo(); return true; }
         return true;

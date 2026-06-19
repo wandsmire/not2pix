@@ -17,7 +17,7 @@ public class PaletteBar extends UIPanel {
     private Not2Pix app;
     private float dp;
     private float swatchSize;
-    private static final int MAX_SWATCHES = 18;
+    private static final int MAX_SWATCHES = 15;
     private static final int COLLAPSED_COUNT = 6;
     private boolean expanded = false;
     private float arrowAreaHeight;
