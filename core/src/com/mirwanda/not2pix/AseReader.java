@@ -35,6 +35,8 @@ public class AseReader {
             AseData data = new AseData();
             int pos = 0;
 
+            if (file.length < 128) throw new IOException("File too small to be ASE");
+
             // Header
             /* int fileSize = */ readDword(file, pos); pos += 4;
             int magic = readWord(file, pos); pos += 2;
@@ -91,16 +93,19 @@ public class AseReader {
                             dataLen = (chunkStart + chunkSize) - pos;
                             byte[] compressed = new byte[dataLen];
                             System.arraycopy(file, pos, compressed, 0, dataLen);
-                            byte[] rgba = zlibDecompress(compressed, celW * celH * 4);
-                            cel.pixels = new Pixmap(celW, celH, Pixmap.Format.RGBA8888);
-                            for (int y = 0; y < celH; y++) {
-                                for (int x = 0; x < celW; x++) {
-                                    int idx = (y * celW + x) * 4;
-                                    int r = rgba[idx] & 0xFF;
-                                    int g = rgba[idx+1] & 0xFF;
-                                    int b = rgba[idx+2] & 0xFF;
-                                    int a = rgba[idx+3] & 0xFF;
-                                    cel.pixels.drawPixel(x, y, (r << 24) | (g << 16) | (b << 8) | a);
+                            int expectedSize = celW * celH * 4;
+                            byte[] rgba = zlibDecompress(compressed, expectedSize);
+                            if (rgba.length >= expectedSize) {
+                                cel.pixels = new Pixmap(celW, celH, Pixmap.Format.RGBA8888);
+                                for (int y = 0; y < celH; y++) {
+                                    for (int x = 0; x < celW; x++) {
+                                        int idx = (y * celW + x) * 4;
+                                        int r = rgba[idx] & 0xFF;
+                                        int g = rgba[idx+1] & 0xFF;
+                                        int b = rgba[idx+2] & 0xFF;
+                                        int a = rgba[idx+3] & 0xFF;
+                                        cel.pixels.drawPixel(x, y, (r << 24) | (g << 16) | (b << 8) | a);
+                                    }
                                 }
                             }
                         }
@@ -119,12 +124,15 @@ public class AseReader {
 
     private static byte[] readFile(String path) throws IOException {
         FileInputStream fis = new FileInputStream(path);
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int len;
-        while ((len = fis.read(buf)) > 0) bos.write(buf, 0, len);
-        fis.close();
-        return bos.toByteArray();
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = fis.read(buf)) > 0) bos.write(buf, 0, len);
+            return bos.toByteArray();
+        } finally {
+            fis.close();
+        }
     }
 
     private static int readDword(byte[] data, int pos) {

@@ -108,18 +108,23 @@ public class AseWriter {
 
             // Write to file
             FileOutputStream fos = new FileOutputStream(path);
-            fos.write(header.toByteArray());
-            for (byte[] fd : frameDataList) fos.write(fd);
-            fos.close();
+            try {
+                fos.write(header.toByteArray());
+                for (byte[] fd : frameDataList) fos.write(fd);
+            } finally {
+                fos.close();
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to write ASE: " + e.getMessage(), e);
         }
     }
 
     private static byte[] pixmapToRGBA(Pixmap pm, int w, int h) {
+        int pmW = Math.min(w, pm.getWidth());
+        int pmH = Math.min(h, pm.getHeight());
         byte[] data = new byte[w * h * 4];
-        for (int y = 0; y < h; y++) {
-            for (int x = 0; x < w; x++) {
+        for (int y = 0; y < pmH; y++) {
+            for (int x = 0; x < pmW; x++) {
                 int pixel = pm.getPixel(x, y); // RGBA8888
                 int idx = (y * w + x) * 4;
                 data[idx] = (byte)((pixel >> 24) & 0xFF); // R

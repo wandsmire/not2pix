@@ -229,7 +229,7 @@ public class Not2Pix extends ApplicationAdapter {
     @Override
     public void render() {
         // Animation playback
-        if (playing) {
+        if (playing && !frames.isEmpty()) {
             animTimer += Gdx.graphics.getDeltaTime();
             if (animTimer >= 1f / frameRate) {
                 animTimer = 0;
@@ -906,63 +906,65 @@ public class Not2Pix extends ApplicationAdapter {
     public void loadAse() { platform.openAse(); }
 
     public void loadAseFromPath(String path) {
-        AseReader.AseData data = AseReader.read(path);
-        canvasWidth = data.width;
-        canvasHeight = data.height;
-        // Rebuild layers
-        for (Layer l : layers) l.dispose();
-        layers.clear();
-        for (AseReader.LayerInfo li : data.layers) {
-            Layer l = new Layer(li.name, canvasWidth, canvasHeight);
-            l.visible = li.visible;
-            l.opacity = li.opacity;
-            layers.add(l);
-        }
-        if (layers.isEmpty()) layers.add(new Layer("Background", canvasWidth, canvasHeight));
-        activeLayerIndex = 0;
-        // Rebuild frames
-        for (AnimFrame f : frames) f.dispose();
-        frames.clear();
-        for (AseReader.FrameData fd : data.frames) {
-            AnimFrame af = new AnimFrame(canvasWidth, canvasHeight);
-            // Composite cels into frame (use layer 0 cel as frame data)
-            for (AseReader.CelData cel : fd.cels) {
-                if (cel.pixels != null && cel.layerIndex == 0) {
-                    af.pixmap.setBlending(Pixmap.Blending.None);
-                    af.pixmap.drawPixmap(cel.pixels, 0, 0);
-                    af.pixmap.setBlending(Pixmap.Blending.SourceOver);
+        try {
+            AseReader.AseData data = AseReader.read(path);
+            canvasWidth = data.width;
+            canvasHeight = data.height;
+            // Rebuild layers
+            for (Layer l : layers) l.dispose();
+            layers.clear();
+            for (AseReader.LayerInfo li : data.layers) {
+                Layer l = new Layer(li.name, canvasWidth, canvasHeight);
+                l.visible = li.visible;
+                l.opacity = li.opacity;
+                layers.add(l);
+            }
+            if (layers.isEmpty()) layers.add(new Layer("Background", canvasWidth, canvasHeight));
+            activeLayerIndex = 0;
+            // Rebuild frames
+            for (AnimFrame f : frames) f.dispose();
+            frames.clear();
+            for (AseReader.FrameData fd : data.frames) {
+                AnimFrame af = new AnimFrame(canvasWidth, canvasHeight);
+                for (AseReader.CelData cel : fd.cels) {
+                    if (cel.pixels != null && cel.layerIndex == 0) {
+                        af.pixmap.setBlending(Pixmap.Blending.None);
+                        af.pixmap.drawPixmap(cel.pixels, 0, 0);
+                        af.pixmap.setBlending(Pixmap.Blending.SourceOver);
+                    }
+                    if (cel.pixels != null && cel.layerIndex < layers.size()) {
+                        Layer l = layers.get(cel.layerIndex);
+                        l.pixmap.setBlending(Pixmap.Blending.None);
+                        l.pixmap.drawPixmap(cel.pixels, 0, 0);
+                        l.pixmap.setBlending(Pixmap.Blending.SourceOver);
+                        l.markDirty();
+                    }
                 }
-                // Load cel data into corresponding layer for current state
-                if (cel.pixels != null && cel.layerIndex < layers.size()) {
-                    Layer l = layers.get(cel.layerIndex);
-                    l.pixmap.setBlending(Pixmap.Blending.None);
-                    l.pixmap.drawPixmap(cel.pixels, 0, 0);
-                    l.pixmap.setBlending(Pixmap.Blending.SourceOver);
-                    l.markDirty(); // ensure GPU texture is re-uploaded
+                af.refreshTexture();
+                frames.add(af);
+                for (AseReader.CelData cel : fd.cels) {
+                    if (cel.pixels != null) cel.pixels.dispose();
                 }
             }
-            af.refreshTexture();
-            frames.add(af);
-            // Dispose cel pixmaps
-            for (AseReader.CelData cel : fd.cels) {
-                if (cel.pixels != null) cel.pixels.dispose();
-            }
+            if (frames.isEmpty()) frames.add(new AnimFrame(canvasWidth, canvasHeight));
+            currentFrameIndex = 0;
+            loadFrame(0);
+            for (Layer l : layers) l.markDirty();
+            undoManager.clear();
+            undoManager.setCanvasSize(canvasWidth, canvasHeight);
+            Document activeDoc = documents.get(activeDocIndex);
+            activeDoc.canvasWidth = canvasWidth;
+            activeDoc.canvasHeight = canvasHeight;
+            activeDoc.layers = layers;
+            activeDoc.frames = frames;
+            activeDoc.undoManager = undoManager;
+            fitToWidth();
+        } catch (Exception e) {
+            Gdx.app.error("Not2Pix", "Failed to load ASE: " + path, e);
+            if (layers.isEmpty()) layers.add(new Layer("Background", canvasWidth, canvasHeight));
+            if (frames.isEmpty()) frames.add(new AnimFrame(canvasWidth, canvasHeight));
+            if (ui != null) ui.showToast("Failed to load .ase file");
         }
-        if (frames.isEmpty()) frames.add(new AnimFrame(canvasWidth, canvasHeight));
-        currentFrameIndex = 0;
-        loadFrame(0);
-        // Mark all layers dirty so render() uploads textures on next frame
-        for (Layer l : layers) l.markDirty();
-        undoManager.clear();
-        undoManager.setCanvasSize(canvasWidth, canvasHeight);
-        // Sync the active document's canvas size so the camera frames correctly
-        Document activeDoc = documents.get(activeDocIndex);
-        activeDoc.canvasWidth = canvasWidth;
-        activeDoc.canvasHeight = canvasHeight;
-        activeDoc.layers = layers;
-        activeDoc.frames = frames;
-        activeDoc.undoManager = undoManager;
-        fitToWidth();
     }
 
     /** Called by platform after SAF open completes */
@@ -1025,7 +1027,12 @@ public class Not2Pix extends ApplicationAdapter {
 
     /** Called by platform after SAF save location chosen */
     public void saveToPath(String path) {
-        PixmapIO.writePNG(Gdx.files.absolute(path), flattenLayers());
+        Pixmap flat = flattenLayers();
+        try {
+            PixmapIO.writePNG(Gdx.files.absolute(path), flat);
+        } finally {
+            flat.dispose();
+        }
     }
 
     public void undo() { undoManager.undo(layers); for (Layer l : layers) l.markDirty(); }
@@ -1152,7 +1159,12 @@ public class Not2Pix extends ApplicationAdapter {
 
     public void save() {
         if (intentFilePath != null) {
-            PixmapIO.writePNG(Gdx.files.absolute(intentFilePath), flattenLayers());
+            Pixmap flat = flattenLayers();
+            try {
+                PixmapIO.writePNG(Gdx.files.absolute(intentFilePath), flat);
+            } finally {
+                flat.dispose();
+            }
             platform.finishWithResult(true);
         }
     }

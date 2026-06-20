@@ -8,8 +8,9 @@ import java.util.HashMap;
 public class GifEncoder {
 
     public static void write(String path, ArrayList<Pixmap> frames, int delayMs) {
+        if (frames.isEmpty()) return;
+        FileOutputStream fos = null;
         try {
-            if (frames.isEmpty()) return;
             int w = frames.get(0).getWidth();
             int h = frames.get(0).getHeight();
 
@@ -40,7 +41,7 @@ public class GifEncoder {
             while (tableSize < palette.size()) { tableSize *= 2; tableBits++; }
             while (palette.size() < tableSize) palette.add(0);
 
-            FileOutputStream fos = new FileOutputStream(path);
+            fos = new FileOutputStream(path);
 
             // GIF Header
             fos.write("GIF89a".getBytes());
@@ -122,9 +123,10 @@ public class GifEncoder {
             }
 
             fos.write(0x3B); // GIF trailer
-            fos.close();
         } catch (Exception e) {
             throw new RuntimeException("Failed to write GIF: " + e.getMessage(), e);
+        } finally {
+            try { if (fos != null) fos.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -154,6 +156,12 @@ public class GifEncoder {
 
         BitWriter bw = new BitWriter(out);
         bw.write(clearCode, codeSize);
+
+        if (pixels.length == 0) {
+            bw.write(eoiCode, codeSize);
+            bw.flush();
+            return out.toByteArray();
+        }
 
         int prefix = pixels[0] & 0xFF;
         for (int i = 1; i < pixels.length; i++) {

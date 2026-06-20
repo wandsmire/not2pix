@@ -30,8 +30,18 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Restore state after process death
+        if (savedInstanceState != null) {
+            intentFilePath = savedInstanceState.getString("intentFilePath");
+            String uriStr = savedInstanceState.getString("intentContentUri");
+            if (uriStr != null) intentContentUri = Uri.parse(uriStr);
+            String curStr = savedInstanceState.getString("currentFileUri");
+            if (curStr != null) currentFileUri = Uri.parse(curStr);
+            fromNotTiled = savedInstanceState.getBoolean("fromNotTiled", false);
+        }
+
         Intent intent = getIntent();
-        if (intent != null) {
+        if (intent != null && savedInstanceState == null) {
             Uri uri = intent.getData();
             if (uri != null) {
                 fromNotTiled = true;
@@ -54,7 +64,18 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
         initialize(app, config);
     }
 
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("intentFilePath", intentFilePath);
+        if (intentContentUri != null) outState.putString("intentContentUri", intentContentUri.toString());
+        if (currentFileUri != null) outState.putString("currentFileUri", currentFileUri.toString());
+        outState.putBoolean("fromNotTiled", fromNotTiled);
+    }
+
     private String copyUriToCache(Uri uri) {
+        InputStream is = null;
+        OutputStream os = null;
         try {
             String name = "image.png";
             try (android.database.Cursor c = getContentResolver().query(uri, null, null, null, null)) {
@@ -63,18 +84,22 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
                     if (idx >= 0) name = c.getString(idx);
                 }
             } catch (Exception ignored) {}
-            InputStream is = getContentResolver().openInputStream(uri);
+            // Sanitize filename to prevent path traversal
+            name = new java.io.File(name).getName();
+            if (name.isEmpty()) name = "image.png";
+            is = getContentResolver().openInputStream(uri);
             if (is == null) return null;
             java.io.File cache = new java.io.File(getCacheDir(), name);
-            OutputStream os = new java.io.FileOutputStream(cache);
+            os = new java.io.FileOutputStream(cache);
             byte[] buf = new byte[8192];
             int len;
             while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
-            os.close();
-            is.close();
             return cache.getAbsolutePath();
         } catch (Exception e) {
             return null;
+        } finally {
+            try { if (os != null) os.close(); } catch (Exception ignored) {}
+            try { if (is != null) is.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -152,19 +177,26 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
     @Override
     public void finishWithResult(boolean saved) {
         if (saved && intentContentUri != null && intentFilePath != null) {
+            InputStream is = null;
+            OutputStream os = null;
             try {
                 java.io.File cached = new java.io.File(intentFilePath);
-                InputStream is = new java.io.FileInputStream(cached);
-                OutputStream os = getContentResolver().openOutputStream(intentContentUri, "wt");
-                if (os != null) {
-                    byte[] buf = new byte[8192];
-                    int len;
-                    while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
-                    os.flush();
-                    os.close();
+                if (cached.exists()) {
+                    is = new java.io.FileInputStream(cached);
+                    os = getContentResolver().openOutputStream(intentContentUri, "wt");
+                    if (os != null) {
+                        byte[] buf = new byte[8192];
+                        int len;
+                        while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
+                        os.flush();
+                    }
                 }
-                is.close();
-            } catch (Exception e) { }
+            } catch (Exception e) {
+                android.util.Log.e("Not2Pix", "finishWithResult failed: " + e.getMessage());
+            } finally {
+                try { if (os != null) os.close(); } catch (Exception ignored) {}
+                try { if (is != null) is.close(); } catch (Exception ignored) {}
+            }
         }
         setResult(saved ? Activity.RESULT_OK : Activity.RESULT_CANCELED);
         finish();
@@ -219,17 +251,22 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
     }
 
     private void writeToUri(Uri uri, String srcPath) {
+        InputStream is = null;
+        OutputStream os = null;
         try {
-            InputStream is = new java.io.FileInputStream(srcPath);
-            OutputStream os = getContentResolver().openOutputStream(uri, "wt");
+            is = new java.io.FileInputStream(srcPath);
+            os = getContentResolver().openOutputStream(uri, "wt");
             if (os != null) {
                 byte[] buf = new byte[8192];
                 int len;
                 while ((len = is.read(buf)) > 0) os.write(buf, 0, len);
                 os.flush();
-                os.close();
             }
-            is.close();
-        } catch (Exception e) { }
+        } catch (Exception e) {
+            android.util.Log.e("Not2Pix", "writeToUri failed: " + e.getMessage());
+        } finally {
+            try { if (os != null) os.close(); } catch (Exception ignored) {}
+            try { if (is != null) is.close(); } catch (Exception ignored) {}
+        }
     }
 }

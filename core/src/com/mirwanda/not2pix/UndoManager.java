@@ -217,6 +217,7 @@ public class UndoManager {
     private void restoreAll(ArrayList<Layer> layers, byte[][] state) {
         for (int i = 0; i < state.length && i < layers.size(); i++) {
             Pixmap pm = layers.get(i).pixmap;
+            if (state[i].length != pm.getWidth() * pm.getHeight() * 4) continue; // size mismatch guard
             pm.getPixels().rewind();
             pm.getPixels().put(state[i], 0, state[i].length);
             pm.getPixels().rewind();
@@ -226,6 +227,8 @@ public class UndoManager {
 
     private void putRegion(Pixmap pm, int rx, int ry, int rw, int rh, byte[] data) {
         int pmW = pm.getWidth();
+        int pmH = pm.getHeight();
+        if (rx + rw > pmW || ry + rh > pmH) return; // dimension mismatch guard
         java.nio.ByteBuffer buf = pm.getPixels();
         for (int y = 0; y < rh; y++) {
             buf.position(((ry + y) * pmW + rx) * 4);
