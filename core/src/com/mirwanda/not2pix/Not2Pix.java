@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.input.GestureDetector;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.Preferences;
 import com.mirwanda.not2pix.ui.EditorUI;
@@ -371,14 +372,23 @@ public class Not2Pix extends ApplicationAdapter {
             shapeRenderer.rectLine(wx, wy + sh2, wx, wy, lw);
             shapeRenderer.end();
 
-            // Draw selection size label below
+            // Draw selection size label in screen space so it stays readable at any zoom
+            Vector3 labelScreenPos = camera.project(new Vector3(wx, wy, 0));
+            float dp = (float) Math.max(1, com.badlogic.gdx.Gdx.graphics.getDensity());
+            float labelScale = Math.max(1.0f, 1.1f * dp);
+            Matrix4 savedProj = batch.getProjectionMatrix().cpy();
+            batch.setProjectionMatrix(new Matrix4().setToOrtho2D(0, 0,
+                com.badlogic.gdx.Gdx.graphics.getWidth(), com.badlogic.gdx.Gdx.graphics.getHeight()));
+            ui.getFont().getData().setScale(labelScale);
+            float labelY = labelScreenPos.y - 4 * dp;
             batch.begin();
-            float fontSize = 1f / zoom;
-            ui.getFont().getData().setScale(fontSize);
+            ui.getFont().setColor(Color.BLACK);
+            ui.getFont().draw(batch, sel.selW + "x" + sel.selH, labelScreenPos.x + 1, labelY - 1);
             ui.getFont().setColor(Color.WHITE);
-            ui.getFont().draw(batch, sel.selW + "x" + sel.selH, wx, wy - 0.5f);
-            ui.getFont().getData().setScale(Math.max(1.0f, 1.1f * (float) Math.max(1, com.badlogic.gdx.Gdx.graphics.getDensity())));
+            ui.getFont().draw(batch, sel.selW + "x" + sel.selH, labelScreenPos.x, labelY);
             batch.end();
+            batch.setProjectionMatrix(savedProj);
+            ui.getFont().getData().setScale(labelScale);
         }
 
         // Draw grid
