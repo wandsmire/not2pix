@@ -704,9 +704,15 @@ public class Not2Pix extends ApplicationAdapter {
             lastCheckerLight = cl;
             lastCheckerDark = cd;
         }
+        // Make each checker cell at least 8 screen pixels wide, but never smaller than 1 canvas pixel
+        float minScreenPx = 8f;
+        float cellCanvasSize = Math.max(1f, minScreenPx / zoom);
+        // Each texture repeat = 2 cells, so UV repeats = canvasSize / (cellCanvasSize * 2)
+        float uRepeat = canvasWidth / (cellCanvasSize * 2f);
+        float vRepeat = canvasHeight / (cellCanvasSize * 2f);
         batch.begin();
         batch.draw(checkerboardTex, 0, 0, canvasWidth, canvasHeight,
-                   0f, 0f, canvasWidth / 2f, canvasHeight / 2f);
+                   0f, 0f, uRepeat, vRepeat);
         batch.end();
     }
 
