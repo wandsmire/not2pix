@@ -12,6 +12,7 @@ chmod +x ./gradlew
 ./gradlew :android:assembleDebug
 
 mkdir -p out
+rm -f out/*.apk
 
 APK="$(find . -path '*/outputs/apk/debug/*.apk' 2>/dev/null | head -1)"
 if [ -z "$APK" ]; then

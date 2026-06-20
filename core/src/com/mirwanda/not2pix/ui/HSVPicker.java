@@ -1,6 +1,8 @@
 package com.mirwanda.not2pix.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -53,7 +55,7 @@ public class HSVPicker extends UIPanel {
         this.width = hueW + svSize + prevW + 4 * pad;
         this.height = svSize + btnH + alphaH + 4 * pad;
         this.x = (screenWidth - width) / 2f;
-        this.y = (screenHeight - height) / 2f;
+        this.y = 0;
 
         // Vertical hue bar on the left
         hueBarX = x + pad;
@@ -77,17 +79,18 @@ public class HSVPicker extends UIPanel {
         alphaBarW = width - 2 * pad;
         alphaBarH = alphaH;
 
-        okBtn = new UIButton("OK", x + pad, y + pad, 50 * dp, btnH);
-        okBtn.action = () -> { open = false; visible = false; };
-        children.add(okBtn);
-
-        cancelBtn = new UIButton("Cancel", x + width - 60 * dp, y + pad, 54 * dp, btnH);
+        float halfBtnW = (width - 3 * pad) / 2f;
+        cancelBtn = new UIButton("Cancel", x + pad, y + pad, halfBtnW, btnH);
         cancelBtn.action = () -> {
             app.palette.setFromColor(oldColor);
             open = false;
             visible = false;
         };
         children.add(cancelBtn);
+
+        okBtn = new UIButton("OK", x + pad + halfBtnW + pad, y + pad, halfBtnW, btnH);
+        okBtn.action = () -> { open = false; visible = false; };
+        children.add(okBtn);
 
         buildHueTexture();
         buildSVTexture(app.palette.hue);
@@ -152,15 +155,18 @@ public class HSVPicker extends UIPanel {
     public void draw(ShapeRenderer sr, SpriteBatch batch, BitmapFont font) {
         if (!visible || !open) return;
 
-        // Dim background
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
+        // Dim background (semi-transparent to see canvas)
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(0, 0, 0, 0.6f);
+        sr.setColor(0, 0, 0, 0.3f);
         sr.rect(0, 0, 9999, 9999);
         sr.end();
 
         // Panel background (semi-transparent)
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(0.18f, 0.18f, 0.18f, 0.85f);
+        sr.setColor(0.18f, 0.18f, 0.18f, 0.75f);
         sr.rect(x, y, width, height);
         sr.end();
 
