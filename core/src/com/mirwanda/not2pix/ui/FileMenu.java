@@ -147,7 +147,7 @@ public class FileMenu {
             
             String displayLabel = item.label;
             if (item.hasSubmenu) {
-                displayLabel += item.expanded ? " \u25bc" : " \u25b6";
+                displayLabel += item.expanded ? " v" : " >";
             }
             
             GlyphLayout gl = new GlyphLayout(font, displayLabel);
