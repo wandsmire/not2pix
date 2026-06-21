@@ -29,41 +29,86 @@ public class FileMenu {
     public Runnable onLoadAse;
     public Runnable onPreferences;
     public Runnable onResizeCanvas;
-    private ArrayList<String> labels = new ArrayList<>();
-    private ArrayList<Runnable> actions = new ArrayList<>();
+
+    private static class MenuItem {
+        String label;
+        Runnable action;
+        boolean hasSubmenu;
+        ArrayList<MenuItem> submenu = new ArrayList<>();
+        boolean expanded = false;
+
+        MenuItem(String label, Runnable action) {
+            this.label = label;
+            this.action = action;
+            this.hasSubmenu = false;
+        }
+
+        MenuItem(String label) {
+            this.label = label;
+            this.hasSubmenu = true;
+        }
+    }
+
+    private ArrayList<MenuItem> menuItems = new ArrayList<>();
 
     public FileMenu(Not2Pix app, float dp) {
         this.app = app;
         this.dp = dp;
-        this.w = 145 * dp;
+        this.w = 160 * dp;
         this.itemH = 38 * dp;
     }
 
     private void buildItems() {
-        labels.clear();
-        actions.clear();
+        menuItems.clear();
         boolean fromNotTiled = app.isFromNotTiled();
 
         if (!fromNotTiled) {
-            labels.add("New"); actions.add(() -> { if (onNew != null) onNew.run(); });
-            labels.add("Open"); actions.add(() -> app.openFile());
+            menuItems.add(new MenuItem("New", () -> { if (onNew != null) onNew.run(); }));
+            
+            MenuItem openMenu = new MenuItem("Open");
+            openMenu.submenu.add(new MenuItem("  Open PNG", () -> app.openFile()));
+            openMenu.submenu.add(new MenuItem("  Open ASE", () -> { if (onLoadAse != null) onLoadAse.run(); }));
+            menuItems.add(openMenu);
         }
-        if (fromNotTiled) {
-            labels.add("Save & Back"); actions.add(() -> { if (onSave != null) onSave.run(); });
-        } else {
-            labels.add("Save"); actions.add(() -> app.saveFile());
-        }
-        labels.add("Save As"); actions.add(() -> app.saveFileAs());
-        labels.add("Close"); actions.add(() -> { if (onClose != null) onClose.run(); });
-        labels.add("Export PNG"); actions.add(() -> { if (onExportPng != null) onExportPng.run(); });
-        labels.add("Export GIF"); actions.add(() -> { if (onExportGif != null) onExportGif.run(); });
-        labels.add("Save .ase"); actions.add(() -> { if (onSaveAse != null) onSaveAse.run(); });
-        labels.add("Load .ase"); actions.add(() -> { if (onLoadAse != null) onLoadAse.run(); });
-        labels.add("Resize Canvas"); actions.add(() -> { if (onResizeCanvas != null) onResizeCanvas.run(); });
-        labels.add("Preferences"); actions.add(() -> { if (onPreferences != null) onPreferences.run(); });
-        labels.add("Exit"); actions.add(() -> { if (onExit != null) onExit.run(); });
 
-        h = labels.size() * itemH;
+        if (fromNotTiled) {
+            menuItems.add(new MenuItem("Save & Back", () -> { if (onSave != null) onSave.run(); }));
+        } else {
+            MenuItem saveMenu = new MenuItem("Save");
+            saveMenu.submenu.add(new MenuItem("  Save", () -> app.saveFile()));
+            saveMenu.submenu.add(new MenuItem("  Save As PNG", () -> app.saveFileAs()));
+            saveMenu.submenu.add(new MenuItem("  Save ASE", () -> { if (onSaveAse != null) onSaveAse.run(); }));
+            menuItems.add(saveMenu);
+        }
+
+        MenuItem exportMenu = new MenuItem("Export");
+        exportMenu.submenu.add(new MenuItem("  Export PNG", () -> { if (onExportPng != null) onExportPng.run(); }));
+        exportMenu.submenu.add(new MenuItem("  Export GIF", () -> { if (onExportGif != null) onExportGif.run(); }));
+        menuItems.add(exportMenu);
+
+        menuItems.add(new MenuItem("Close", () -> { if (onClose != null) onClose.run(); }));
+        menuItems.add(new MenuItem("Resize Canvas", () -> { if (onResizeCanvas != null) onResizeCanvas.run(); }));
+        menuItems.add(new MenuItem("Preference", () -> { if (onPreferences != null) onPreferences.run(); }));
+        menuItems.add(new MenuItem("Exit", () -> { if (onExit != null) onExit.run(); }));
+
+        recalculateHeight();
+    }
+
+    private ArrayList<MenuItem> getVisibleItems() {
+        ArrayList<MenuItem> visible = new ArrayList<>();
+        for (MenuItem item : menuItems) {
+            visible.add(item);
+            if (item.hasSubmenu && item.expanded) {
+                for (MenuItem sub : item.submenu) {
+                    visible.add(sub);
+                }
+            }
+        }
+        return visible;
+    }
+
+    private void recalculateHeight() {
+        h = getVisibleItems().size() * itemH;
     }
 
     public void show(float bx, float by) {
@@ -78,6 +123,9 @@ public class FileMenu {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         float sw = Gdx.graphics.getWidth(), sh = Gdx.graphics.getHeight();
+
+        recalculateHeight();
+
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0, 0, 0, 0.5f);
         sr.rect(0, 0, sw, sh);
@@ -86,27 +134,44 @@ public class FileMenu {
         sr.end();
 
         batch.begin();
-        for (int i = 0; i < labels.size(); i++) {
+        ArrayList<MenuItem> visible = getVisibleItems();
+        for (int i = 0; i < visible.size(); i++) {
             float iy = y + h - (i + 1) * itemH;
-            String lbl = labels.get(i);
-            if (lbl.equals("---")) {
-                font.setColor(Color.GRAY);
+            MenuItem item = visible.get(i);
+            
+            if (item.label.startsWith("  ")) {
+                font.setColor(Color.LIGHT_GRAY);
             } else {
                 font.setColor(Color.WHITE);
             }
-            GlyphLayout gl = new GlyphLayout(font, lbl);
-            font.draw(batch, lbl, x + 10 * dp, iy + (itemH + gl.height) / 2f);
+            
+            String displayLabel = item.label;
+            if (item.hasSubmenu) {
+                displayLabel += item.expanded ? " \u25bc" : " \u25b6";
+            }
+            
+            GlyphLayout gl = new GlyphLayout(font, displayLabel);
+            font.draw(batch, displayLabel, x + 10 * dp, iy + (itemH + gl.height) / 2f);
         }
         batch.end();
     }
 
     public boolean handleTouch(float tx, float ty) {
         if (!open) return false;
+        ArrayList<MenuItem> visible = getVisibleItems();
         if (tx >= x && tx <= x + w && ty >= y && ty <= y + h) {
             int idx = (int) ((y + h - ty) / itemH);
-            if (idx >= 0 && idx < actions.size()) {
-                Runnable action = actions.get(idx);
-                if (action != null) action.run();
+            if (idx >= 0 && idx < visible.size()) {
+                MenuItem item = visible.get(idx);
+                if (item.hasSubmenu) {
+                    item.expanded = !item.expanded;
+                    recalculateHeight();
+                    return true;
+                } else {
+                    if (item.action != null) {
+                        item.action.run();
+                    }
+                }
             }
         }
         open = false;

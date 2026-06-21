@@ -634,7 +634,7 @@ public class Not2Pix extends ApplicationAdapter {
             initialPinchDist = 0;
             return;
         }
-
+ 
         // Single finger = draw immediately (no longpress needed)
         if (touches == 1 && !isPanning) {
             float screenX = Gdx.input.getX(0);
@@ -643,7 +643,15 @@ public class Not2Pix extends ApplicationAdapter {
             int px = (int) world.x;
             int py = canvasHeight - 1 - (int) world.y;
 
-            if (px >= 0 && px < canvasWidth && py >= 0 && py < canvasHeight) {
+            if (activeToolIndex == 5) {
+                Tool tool = tools[activeToolIndex];
+                if (!touching) {
+                    tool.onDown(null, px, py, palette.getSelected());
+                    touching = true;
+                } else {
+                    tool.onDrag(null, px, py, palette.getSelected());
+                }
+            } else if (px >= 0 && px < canvasWidth && py >= 0 && py < canvasHeight) {
                 if (colorPickerActive) {
                     if (!touching) {
                         pickColor(px, py);
@@ -672,13 +680,18 @@ public class Not2Pix extends ApplicationAdapter {
             float screenX = Gdx.input.getX(0);
             float screenY = Gdx.input.getY(0);
             Vector3 world = camera.unproject(new Vector3(screenX, screenY, 0));
-            int px = MathUtils.clamp((int) world.x, 0, canvasWidth - 1);
-            int py = MathUtils.clamp(canvasHeight - 1 - (int) world.y, 0, canvasHeight - 1);
-            if (!colorPickerActive) {
+            int px = (int) world.x;
+            int py = canvasHeight - 1 - (int) world.y;
+            if (activeToolIndex == 5) {
+                Tool tool = tools[activeToolIndex];
+                tool.onUp(null, px, py, palette.getSelected());
+            } else if (!colorPickerActive) {
+                int cpx = MathUtils.clamp(px, 0, canvasWidth - 1);
+                int cpy = MathUtils.clamp(py, 0, canvasHeight - 1);
                 Layer activeLayer = layers.get(activeLayerIndex);
                 Tool tool = tools[activeToolIndex];
-                tool.onUp(activeLayer.pixmap, px, py, palette.getSelected());
-                applyMirror(tool, activeLayer.pixmap, px, py, palette.getSelected(), 2);
+                tool.onUp(activeLayer.pixmap, cpx, cpy, palette.getSelected());
+                applyMirror(tool, activeLayer.pixmap, cpx, cpy, palette.getSelected(), 2);
                 activeLayer.markDirty();
                 undoManager.endStroke(layers, activeLayerIndex);
             }
