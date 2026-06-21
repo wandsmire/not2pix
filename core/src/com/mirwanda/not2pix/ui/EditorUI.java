@@ -20,6 +20,7 @@ public class EditorUI {
     private float dp;
 
     public Toolbar toolbar;
+    public TopToolbar topToolbar;
     public PaletteBar paletteBar;
     public BottomStrip bottomStrip;
     public StatusBar statusBar;
@@ -40,7 +41,7 @@ public class EditorUI {
     public CanvasResizeDialog canvasResizeDialog;
 
     private boolean touchHandled = false;
-    private enum DragTarget { NONE, FRAME_STRIP, LAYER_PANEL, HSV_PICKER, MINIMAP, DOC_STRIP }
+    private enum DragTarget { NONE, FRAME_STRIP, LAYER_PANEL, HSV_PICKER, MINIMAP, DOC_STRIP, TOP_TOOLBAR }
     private DragTarget activeDrag = DragTarget.NONE;
 
     private float touchDownTime = 0;
@@ -78,6 +79,8 @@ public class EditorUI {
         paletteBar = new PaletteBar(app, sw, sh, dp, stripH);
         statusBar = new StatusBar(app, sw, sh, dp);
         frameStrip = new FrameStrip(app, sw, sh, dp);
+        frameStrip.y = sh - 28 * dp - 28 * dp - 40 * dp - 82 * dp;
+        topToolbar = new TopToolbar(app, sw, sh, dp);
         hsvPicker = new HSVPicker(app, sw, sh, dp);
         layerPanel = new LayerPanel(app, sw, sh, dp);
         layerPanel.y = stripH; // move above bottom strip
@@ -144,6 +147,7 @@ public class EditorUI {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
         toolbar.draw(sr, batch, font);
+        topToolbar.draw(sr, batch, font);
         paletteBar.draw(sr, batch, font);
         bottomStrip.draw(sr, batch, font);
 
@@ -259,6 +263,7 @@ public class EditorUI {
         if (hsvPicker.open) { hsvPicker.handleTouch(tx, ty); touchHandled = true; activeDrag = DragTarget.HSV_PICKER; return true; }
 
         if (layerPanel.handleTouch(tx, ty)) { touchHandled = true; activeDrag = DragTarget.LAYER_PANEL; return true; }
+        if (topToolbar.handleTouch(tx, ty)) { touchHandled = true; activeDrag = DragTarget.TOP_TOOLBAR; return true; }
         if (bottomStrip.handleTouch(tx, ty)) { touchHandled = true; return true; }
         if (paletteBar.handleTouch(tx, ty)) { touchHandled = true; return true; }
         if (docStrip.handleTouch(tx, ty)) { touchHandled = true; activeDrag = DragTarget.DOC_STRIP; return true; }
@@ -339,6 +344,7 @@ public class EditorUI {
             case FRAME_STRIP: frameStrip.handleDrag(tx, ty); break;
             case LAYER_PANEL: layerPanel.handleDrag(tx, ty); break;
             case MINIMAP: minimap.handleTouch(tx, ty); break;
+            case TOP_TOOLBAR: topToolbar.handleDrag(tx, ty); break;
             case DOC_STRIP: docStrip.handleDrag(tx, ty); break;
             default: break;
         }
@@ -349,6 +355,7 @@ public class EditorUI {
         if (activeDrag == DragTarget.FRAME_STRIP) frameStrip.handleUp();
         if (activeDrag == DragTarget.LAYER_PANEL) layerPanel.handleUp();
         if (activeDrag == DragTarget.DOC_STRIP) docStrip.handleUp(lastTouchX, lastTouchY);
+        if (activeDrag == DragTarget.TOP_TOOLBAR) topToolbar.handleUp(lastTouchX, lastTouchY);
         paletteBar.touchReleased();
         boolean was = touchHandled;
         touchHandled = false;
@@ -363,6 +370,7 @@ public class EditorUI {
         if (confirmDialog.open || newCanvasDialog.open || prefsDialog.open || colorAdjustDialog.open || fileMenu.open || hsvPicker.open || brushSizePopup.open || shapeSelector.open || tileSizePopup.open || zoomPopup.open) return true;
         if (statusBar.hit(tx, ty)) return true;
         if (toolbar.hit(tx, ty)) return true;
+        if (topToolbar.hit(tx, ty)) return true;
         if (paletteBar.hit(tx, ty)) return true;
         if (bottomStrip.hit(tx, ty)) return true;
         if (frameStrip.hit(tx, ty)) return true;

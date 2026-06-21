@@ -28,4 +28,8 @@ public interface PlatformBridge {
 
     /** Open .ase file */
     void openAse();
+
+    /** Select background image via SAF */
+    void selectBackgroundImage();
 }
+

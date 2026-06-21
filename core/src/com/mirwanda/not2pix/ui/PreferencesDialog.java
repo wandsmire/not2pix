@@ -45,7 +45,7 @@ public class PreferencesDialog {
     public void show() {
         float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
-        this.h = 13 * rowH + 10 * dp; // 13 rows + padding
+        this.h = 7 * rowH + 10 * dp; // 7 rows + padding
         this.x = (sw - w) / 2f;
         this.y = (sh - h) / 2f;
         open = true;
@@ -72,60 +72,32 @@ public class PreferencesDialog {
         batch.end();
 
         float ry = y + h - rowH - 10 * dp; // first row below title
-        float swatchSize = 24 * dp;
-        float labelX = x + 10 * dp;
-        float swatchX = x + w - swatchSize - 10 * dp;
 
-        // Row 0: Grid toggle
-        drawRow(sr, batch, font, ry, (app.showGrid ? "[x] " : "[ ] ") + "Grid", null);
-        ry -= rowH;
-
-        // Row 1: Grid Color (swatch)
+        // Row 0: Grid Color
         drawRow(sr, batch, font, ry, "Grid Color", app.gridColor);
         ry -= rowH;
 
-        // Row 2: Tile Grid size
-        String tileLabel = app.tileSize == 0 ? "Tile Grid: Off" : "Tile Grid: " + app.tileSize;
-        drawRow(sr, batch, font, ry, tileLabel, null);
-        ry -= rowH;
-
-        // Row 3: Tile Grid Color (swatch)
+        // Row 1: Tile Grid Color
         drawRow(sr, batch, font, ry, "Tile Grid Color", app.tileGridColor);
         ry -= rowH;
 
-        // Row 4: Background Color (swatch)
+        // Row 2: Background Color
         drawRow(sr, batch, font, ry, "Background Color", app.bgColor);
         ry -= rowH;
 
-        // Row 5: Checker Light (swatch)
+        // Row 3: Checker Light
         drawRow(sr, batch, font, ry, "Checker Light", app.checkerLight);
         ry -= rowH;
 
-        // Row 6: Checker Dark (swatch)
+        // Row 4: Checker Dark
         drawRow(sr, batch, font, ry, "Checker Dark", app.checkerDark);
         ry -= rowH;
 
-        // Row 7: Mirror X
-        drawRow(sr, batch, font, ry, (app.mirrorX ? "[x] " : "[ ] ") + "Mirror X", null);
-        ry -= rowH;
-
-        // Row 8: Mirror Y
-        drawRow(sr, batch, font, ry, (app.mirrorY ? "[x] " : "[ ] ") + "Mirror Y", null);
-        ry -= rowH;
-
-        // Row 9: Onion Skin
-        drawRow(sr, batch, font, ry, (app.onionSkin ? "[x] " : "[ ] ") + "Onion Skin", null);
-        ry -= rowH;
-
-        // Row 10: Show Minimap
-        drawRow(sr, batch, font, ry, (app.showMinimap ? "[x] " : "[ ] ") + "Minimap", null);
-        ry -= rowH;
-
-        // Row 11: Minimap Size
+        // Row 5: Minimap Size
         drawRow(sr, batch, font, ry, "Minimap Size: " + app.minimapSize, null);
         ry -= rowH;
 
-        // Row 12: Close button
+        // Row 6: Close button
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0.3f, 0.3f, 0.5f, 1);
         sr.rect(x + w / 2f - 40 * dp, ry + 4 * dp, 80 * dp, rowH - 8 * dp);
@@ -165,22 +137,16 @@ public class PreferencesDialog {
 
         float ry = y + h - rowH - 10 * dp;
         int row = (int) ((y + h - 10 * dp - ty) / rowH);
-        if (row < 0 || row > 12) return true;
+        if (row < 0 || row > 6) return true;
 
         switch (row) {
-            case 0: app.showGrid = !app.showGrid; app.savePrefs(); break;
-            case 1: if (onGridColor != null) onGridColor.run(); open = false; break;
-            case 2: if (onTileSize != null) onTileSize.run(); open = false; break;
-            case 3: if (onTileGridColor != null) onTileGridColor.run(); open = false; break;
-            case 4: if (onBgColor != null) onBgColor.run(); open = false; break;
-            case 5: if (onCheckerLight != null) onCheckerLight.run(); open = false; break;
-            case 6: if (onCheckerDark != null) onCheckerDark.run(); open = false; break;
-            case 7: app.mirrorX = !app.mirrorX; app.savePrefs(); break;
-            case 8: app.mirrorY = !app.mirrorY; app.savePrefs(); break;
-            case 9: app.onionSkin = !app.onionSkin; app.savePrefs(); break;
-            case 10: app.showMinimap = !app.showMinimap; app.savePrefs(); break;
-            case 11: if (onMinimapSize != null) onMinimapSize.run(); open = false; break;
-            case 12: open = false; break;
+            case 0: if (onGridColor != null) onGridColor.run(); open = false; break;
+            case 1: if (onTileGridColor != null) onTileGridColor.run(); open = false; break;
+            case 2: if (onBgColor != null) onBgColor.run(); open = false; break;
+            case 3: if (onCheckerLight != null) onCheckerLight.run(); open = false; break;
+            case 4: if (onCheckerDark != null) onCheckerDark.run(); open = false; break;
+            case 5: if (onMinimapSize != null) onMinimapSize.run(); open = false; break;
+            case 6: open = false; break;
         }
         return true;
     }

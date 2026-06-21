@@ -46,6 +46,9 @@ public class DesktopLauncher {
             public void openAse() { }
 
             @Override
+            public void selectBackgroundImage() { }
+
+            @Override
             public void closeApp() {
                 System.exit(0);
             }

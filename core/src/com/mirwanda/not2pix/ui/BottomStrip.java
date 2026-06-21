@@ -63,17 +63,6 @@ public class BottomStrip extends UIPanel {
         sr.rect(x, y, width, height);
         sr.end();
 
-        // Fit to Width button (left)
-        sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(0.22f, 0.22f, 0.22f, 0.95f);
-        sr.rect(fitX, btnY, btnSize, btnSize);
-        // Draw fit icon: two horizontal arrows pointing outward
-        sr.setColor(Color.LIGHT_GRAY);
-        float fcx = fitX + btnSize / 2f, fcy = btnY + btnSize / 2f;
-        sr.rect(fitX + btnSize * 0.15f, fcy - lw * 0.75f, btnSize * 0.7f, lw * 1.5f);
-        sr.triangle(fitX + btnSize * 0.15f, fcy - lw * 3, fitX + btnSize * 0.15f, fcy + lw * 3, fitX + btnSize * 0.05f, fcy);
-        sr.triangle(fitX + btnSize * 0.85f, fcy - lw * 3, fitX + btnSize * 0.85f, fcy + lw * 3, fitX + btnSize * 0.95f, fcy);
-        sr.end();
 
         // Movement toggle (center group)
         sr.begin(ShapeRenderer.ShapeType.Filled);
@@ -131,7 +120,6 @@ public class BottomStrip extends UIPanel {
         // Borders
         sr.begin(ShapeRenderer.ShapeType.Line);
         sr.setColor(0.4f, 0.4f, 0.4f, 1);
-        sr.rect(fitX, btnY, btnSize, btnSize);
         sr.rect(toggleX, btnY, toggleW, btnSize);
         sr.rect(zoomMinusX, btnY, btnSize, btnSize);
         sr.rect(zoomPlusX, btnY, btnSize, btnSize);
@@ -160,7 +148,7 @@ public class BottomStrip extends UIPanel {
         if (!hit(touchX, touchY)) return false;
         if (touchY < btnY || touchY > btnY + btnSize) return true;
 
-        if (touchX >= fitX && touchX <= fitX + btnSize) { app.fitToWidth(); return true; }
+
         if (touchX >= toggleX && touchX <= toggleX + toggleW) { movementMode = !movementMode; return true; }
         if (touchX >= zoomMinusX && touchX <= zoomMinusX + btnSize) { app.zoomIn(); return true; }
         if (touchX >= zoomPlusX && touchX <= zoomPlusX + btnSize) { app.zoomOut(); return true; }

@@ -19,6 +19,7 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
     private static final int REQUEST_EXPORT_GIF = 1003;
     private static final int REQUEST_SAVE_ASE = 1004;
     private static final int REQUEST_OPEN_ASE = 1005;
+    private static final int REQUEST_BG_IMAGE = 1006;
 
     private String intentFilePath;
     private Uri intentContentUri;
@@ -175,6 +176,20 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
     }
 
     @Override
+    public void selectBackgroundImage() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        Intent getContent = new Intent(Intent.ACTION_GET_CONTENT);
+        getContent.addCategory(Intent.CATEGORY_OPENABLE);
+        getContent.setType("image/*");
+        Intent chooser = Intent.createChooser(getContent, "Select background image...");
+        chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{intent});
+        startActivityForResult(chooser, REQUEST_BG_IMAGE);
+    }
+
+    @Override
     public void finishWithResult(boolean saved) {
         if (saved && intentContentUri != null && intentFilePath != null) {
             InputStream is = null;
@@ -246,6 +261,11 @@ public class AndroidLauncher extends AndroidApplication implements PlatformBridg
             String path = copyUriToCache(uri);
             if (path != null) {
                 Gdx.app.postRunnable(() -> app.loadAseFromPath(path));
+            }
+        } else if (requestCode == REQUEST_BG_IMAGE) {
+            String path = copyUriToCache(uri);
+            if (path != null) {
+                Gdx.app.postRunnable(() -> app.loadBackgroundImage(path));
             }
         }
     }

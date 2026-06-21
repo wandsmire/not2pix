@@ -39,7 +39,7 @@ public class Minimap {
             drawW = maxSize * aspect;
         }
         mx = 6 * dp;
-        float topOffset = (app.frameStripOpen ? 82 * dp : 0) + 28 * dp + 28 * dp; // frame strip (if open) + status bar + doc strip
+        float topOffset = (app.frameStripOpen ? 82 * dp : 0) + 28 * dp + 28 * dp + 40 * dp; // frame strip (if open) + status bar + doc strip + top toolbar
         my = sh - topOffset - drawH - 6 * dp;
 
         frameCounter++;

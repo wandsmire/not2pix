@@ -23,7 +23,7 @@ import java.util.ArrayList;
  */
 public class Not2Pix extends ApplicationAdapter {
 
-    private PlatformBridge platform;
+    public PlatformBridge platform;
     private SpriteBatch batch;
     private ShapeRenderer shapeRenderer;
     private OrthographicCamera camera;
@@ -78,6 +78,14 @@ public class Not2Pix extends ApplicationAdapter {
     private float animTimer = 0;
     public boolean onionSkin = false;
 
+    // Background Trace Image
+    public Texture bgTraceTexture;
+    public float bgTraceX = 0f;
+    public float bgTraceY = 0f;
+    public float bgTraceWidth = 0f;
+    public float bgTraceHeight = 0f;
+    public float bgTraceOpacity = 0.6f;
+
     // Multi-document
     public ArrayList<Document> documents = new ArrayList<>();
     public int activeDocIndex = 0;
@@ -85,7 +93,7 @@ public class Not2Pix extends ApplicationAdapter {
     // Touch state
     private boolean touching = false;
     private float lastPanX, lastPanY;
-    private EditorUI ui;
+    public EditorUI ui;
     private boolean uiConsuming = false;
     public boolean colorPickerActive = false;
 
@@ -113,7 +121,7 @@ public class Not2Pix extends ApplicationAdapter {
         loadPrefs();
         undoManager = new UndoManager();
         undoManager.setCanvasSize(canvasWidth, canvasHeight);
-        tools = new Tool[]{ new PencilTool(), new EraserTool(), new FillTool(), new ShapeTool(), new SelectionTool() };
+        tools = new Tool[]{ new PencilTool(), new EraserTool(), new FillTool(), new ShapeTool(), new SelectionTool(), new BackgroundTool(this) };
 
         intentFilePath = platform.getIntentFilePath();
 
@@ -254,6 +262,15 @@ public class Not2Pix extends ApplicationAdapter {
         // Draw checkerboard background
         drawCheckerboard();
 
+        // Draw background trace image
+        if (bgTraceTexture != null) {
+            batch.begin();
+            batch.setColor(1, 1, 1, bgTraceOpacity);
+            batch.draw(bgTraceTexture, bgTraceX, bgTraceY, bgTraceWidth, bgTraceHeight);
+            batch.setColor(1, 1, 1, 1);
+            batch.end();
+        }
+
         // Draw onion skin (previous frame, semi-transparent)
         if (onionSkin && currentFrameIndex > 0 && frames.size() > 1) {
             batch.begin();
@@ -391,12 +408,48 @@ public class Not2Pix extends ApplicationAdapter {
             ui.getFont().getData().setScale(labelScale);
         }
 
+        // Draw background tool overlay (bounding box + handles) if selected
+        if (activeToolIndex == 5 && bgTraceTexture != null) {
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(Color.ORANGE);
+            float lw = 0.3f;
+            // Draw box outline
+            shapeRenderer.rectLine(bgTraceX, bgTraceY, bgTraceX + bgTraceWidth, bgTraceY, lw);
+            shapeRenderer.rectLine(bgTraceX + bgTraceWidth, bgTraceY, bgTraceX + bgTraceWidth, bgTraceY + bgTraceHeight, lw);
+            shapeRenderer.rectLine(bgTraceX + bgTraceWidth, bgTraceY + bgTraceHeight, bgTraceX, bgTraceY + bgTraceHeight, lw);
+            shapeRenderer.rectLine(bgTraceX, bgTraceY + bgTraceHeight, bgTraceX, bgTraceY, lw);
+
+            // Draw corner handles
+            float hs = Math.max(0.5f, 8f / zoom); // handle size in canvas coords
+            float hsHalf = hs / 2f;
+            shapeRenderer.rect(bgTraceX - hsHalf, bgTraceY - hsHalf, hs, hs);
+            shapeRenderer.rect(bgTraceX + bgTraceWidth - hsHalf, bgTraceY - hsHalf, hs, hs);
+            shapeRenderer.rect(bgTraceX + bgTraceWidth - hsHalf, bgTraceY + bgTraceHeight - hsHalf, hs, hs);
+            shapeRenderer.rect(bgTraceX - hsHalf, bgTraceY + bgTraceHeight - hsHalf, hs, hs);
+            shapeRenderer.end();
+        }
+
         // Draw grid
         if (showGrid && zoom >= 4f) {
             drawGrid();
         }
         if (showGrid && tileSize > 0) {
             drawTileGrid();
+        }
+
+        // Draw mirror center lines
+        if (mirrorX || mirrorY) {
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(1f, 0f, 0f, 0.4f);
+            float lw = 0.15f;
+            if (mirrorX) {
+                shapeRenderer.rectLine(canvasWidth / 2f, 0, canvasWidth / 2f, canvasHeight, lw);
+            }
+            if (mirrorY) {
+                shapeRenderer.rectLine(0, canvasHeight / 2f, canvasWidth, canvasHeight / 2f, lw);
+            }
+            shapeRenderer.end();
         }
 
         // Draw UI overlay
@@ -1299,11 +1352,39 @@ public class Not2Pix extends ApplicationAdapter {
         }
     }
 
+    public void loadBackgroundImage(String path) {
+        try {
+            Pixmap pm = new Pixmap(Gdx.files.absolute(path));
+            if (bgTraceTexture != null) bgTraceTexture.dispose();
+            bgTraceTexture = new Texture(pm);
+            bgTraceTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            bgTraceWidth = pm.getWidth();
+            bgTraceHeight = pm.getHeight();
+            // Center it on the canvas
+            bgTraceX = (canvasWidth - bgTraceWidth) / 2f;
+            bgTraceY = (canvasHeight - bgTraceHeight) / 2f;
+            pm.dispose();
+            if (ui != null) ui.showToast("Background loaded");
+        } catch (Exception e) {
+            Gdx.app.error("Not2Pix", "Failed to load background image: " + path, e);
+            if (ui != null) ui.showToast("Failed to load background image");
+        }
+    }
+
+    public void removeBackgroundImage() {
+        if (bgTraceTexture != null) {
+            bgTraceTexture.dispose();
+            bgTraceTexture = null;
+            if (ui != null) ui.showToast("Background removed");
+        }
+    }
+
     @Override
     public void dispose() {
         batch.dispose();
         shapeRenderer.dispose();
         if (checkerboardTex != null) checkerboardTex.dispose();
+        if (bgTraceTexture != null) bgTraceTexture.dispose();
         for (Document doc : documents) {
             if (doc.layers != layers) doc.dispose();
         }
