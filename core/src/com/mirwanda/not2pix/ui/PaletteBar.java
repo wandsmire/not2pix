@@ -2,6 +2,7 @@ package com.mirwanda.not2pix.ui;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
@@ -70,9 +71,24 @@ public class PaletteBar extends UIPanel {
         sr.begin(ShapeRenderer.ShapeType.Filled);
         int count = Math.min(visibleCount, pal.colors.size());
         for (int i = 0; i < count; i++) {
+            Color color = pal.colors.get(i);
             float sy = y + 2 * dp + i * (swatchSize + 2 * dp);
-            sr.setColor(pal.colors.get(i));
-            sr.rect(x + pad, sy, swatchSize, swatchSize);
+            float sx = x + pad;
+            
+            // Draw a small 2x2 grid checkerboard inside each swatch
+            float halfSize = swatchSize / 2f;
+            sr.setColor(0.9f, 0.9f, 0.9f, 1f);
+            sr.rect(sx, sy, halfSize, halfSize);
+            sr.rect(sx + halfSize, sy + halfSize, halfSize, halfSize);
+            sr.setColor(0.75f, 0.75f, 0.75f, 1f);
+            sr.rect(sx + halfSize, sy, halfSize, halfSize);
+            sr.rect(sx, sy + halfSize, halfSize, halfSize);
+            
+            // Draw color on top with blending
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            sr.setColor(color);
+            sr.rect(sx, sy, swatchSize, swatchSize);
         }
         sr.end();
 

@@ -34,6 +34,12 @@ public class HSVPicker extends UIPanel {
     private Color oldColor = new Color();
     public boolean open = false;
 
+    private int dragMode = 0; // 0 = none, 1 = SV, 2 = Hue, 3 = Alpha
+
+    public void touchReleased() {
+        dragMode = 0;
+    }
+
     // When non-null, we're picking for an external color (not palette)
     private Color colorTarget = null;
     private Runnable onTargetDone = null;
@@ -137,6 +143,7 @@ public class HSVPicker extends UIPanel {
         app.palette.value = hsv[2];
         app.palette.alpha = hsv[3];
         buildSVTexture(app.palette.hue);
+        dragMode = 0;
     }
 
     /** Open picker for an arbitrary color target (not the palette) */
@@ -149,6 +156,7 @@ public class HSVPicker extends UIPanel {
         float[] hsv = Palette.colorToHSV(target);
         targetHue = hsv[0]; targetSat = hsv[1]; targetVal = hsv[2]; targetAlpha = hsv[3];
         buildSVTexture(targetHue);
+        dragMode = 0;
     }
 
     @Override
@@ -203,6 +211,8 @@ public class HSVPicker extends UIPanel {
 
         // Color preview: checkerboard + new (top) and old (bottom)
         float halfH = previewH / 2f;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         sr.begin(ShapeRenderer.ShapeType.Filled);
         float checkSize = 6 * dp;
         for (float cy = previewY; cy < previewY + previewH; cy += checkSize) {
@@ -221,12 +231,35 @@ public class HSVPicker extends UIPanel {
         sr.rect(previewX, previewY, previewW, halfH);
         sr.end();
 
-        // Alpha bar
+        // Alpha bar background (checkerboard)
         sr.begin(ShapeRenderer.ShapeType.Filled);
-        sr.setColor(0.5f, 0.5f, 0.5f, 1);
+        float alphaCheckSize = 5 * dp;
+        for (float cy = alphaBarY; cy < alphaBarY + alphaBarH; cy += alphaCheckSize) {
+            for (float cx = alphaBarX; cx < alphaBarX + alphaBarW; cx += alphaCheckSize) {
+                int ix = (int) ((cx - alphaBarX) / alphaCheckSize);
+                int iy = (int) ((cy - alphaBarY) / alphaCheckSize);
+                sr.setColor((ix + iy) % 2 == 0 ? new Color(0.9f, 0.9f, 0.9f, 1f) : new Color(0.75f, 0.75f, 0.75f, 1f));
+                sr.rect(cx, cy, Math.min(alphaCheckSize, alphaBarX + alphaBarW - cx), Math.min(alphaCheckSize, alphaBarY + alphaBarH - cy));
+            }
+        }
+        
+        // Alpha bar color gradient (transparent -> opaque)
+        Color cTrans = new Color(drawColor.r, drawColor.g, drawColor.b, 0f);
+        Color cOpaque = new Color(drawColor.r, drawColor.g, drawColor.b, 1f);
+        sr.rect(alphaBarX, alphaBarY, alphaBarW, alphaBarH, cTrans, cOpaque, cOpaque, cTrans);
+        
+        // Alpha bar cursor indicator (framed thumb)
+        float indicatorX = alphaBarX + drawAlpha * alphaBarW;
+        sr.setColor(0.1f, 0.1f, 0.1f, 1f); // Dark border
+        sr.rect(indicatorX - 3 * dp, alphaBarY - 2 * dp, 6 * dp, alphaBarH + 4 * dp);
+        sr.setColor(1f, 1f, 1f, 1f); // White center
+        sr.rect(indicatorX - 2 * dp, alphaBarY - 1 * dp, 4 * dp, alphaBarH + 2 * dp);
+        sr.end();
+
+        // Alpha bar border
+        sr.begin(ShapeRenderer.ShapeType.Line);
+        sr.setColor(0.35f, 0.35f, 0.35f, 1);
         sr.rect(alphaBarX, alphaBarY, alphaBarW, alphaBarH);
-        sr.setColor(drawColor);
-        sr.rect(alphaBarX, alphaBarY, alphaBarW * drawAlpha, alphaBarH);
         sr.end();
 
         // Buttons
@@ -234,9 +267,57 @@ public class HSVPicker extends UIPanel {
         cancelBtn.draw(sr, batch, font);
     }
 
+    private void updateSV(float touchX, float touchY) {
+        float s = MathUtils.clamp((touchX - svX) / svSize, 0, 1);
+        float v = MathUtils.clamp((touchY - svY) / svSize, 0, 1);
+        if (colorTarget != null) {
+            targetSat = s; targetVal = v;
+            colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
+        } else {
+            app.palette.saturation = s; app.palette.value = v;
+            app.palette.setFromHSV(app.palette.hue, s, v, app.palette.alpha);
+        }
+    }
+
+    private void updateHue(float touchY) {
+        float h = MathUtils.clamp((touchY - hueBarY) / hueBarH * 360f, 0, 359);
+        if (colorTarget != null) {
+            targetHue = h;
+            buildSVTexture(targetHue);
+            colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
+        } else {
+            app.palette.hue = h;
+            buildSVTexture(h);
+            app.palette.setFromHSV(h, app.palette.saturation, app.palette.value, app.palette.alpha);
+        }
+    }
+
+    private void updateAlpha(float touchX) {
+        float a = MathUtils.clamp((touchX - alphaBarX) / alphaBarW, 0, 1);
+        if (colorTarget != null) {
+            targetAlpha = a;
+            colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
+        } else {
+            app.palette.alpha = a;
+            app.palette.setFromHSV(app.palette.hue, app.palette.saturation, app.palette.value, a);
+        }
+    }
+
     /** Handle touch. Returns true if picker consumed it. */
     public boolean handleTouch(float touchX, float touchY) {
         if (!open || !visible) return false;
+
+        // If locked to a slider zone during drag, directly delegate
+        if (dragMode == 1) {
+            updateSV(touchX, touchY);
+            return true;
+        } else if (dragMode == 2) {
+            updateHue(touchY);
+            return true;
+        } else if (dragMode == 3) {
+            updateAlpha(touchX);
+            return true;
+        }
 
         // OK button
         if (okBtn.hit(touchX, touchY)) {
@@ -260,45 +341,24 @@ public class HSVPicker extends UIPanel {
 
         // SV area
         if (touchX >= svX && touchX <= svX + svSize && touchY >= svY && touchY <= svY + svSize) {
-            float s = MathUtils.clamp((touchX - svX) / svSize, 0, 1);
-            float v = MathUtils.clamp((touchY - svY) / svSize, 0, 1);
-            if (colorTarget != null) {
-                targetSat = s; targetVal = v;
-                colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
-            } else {
-                app.palette.saturation = s; app.palette.value = v;
-                app.palette.setFromHSV(app.palette.hue, s, v, app.palette.alpha);
-            }
+            dragMode = 1;
+            updateSV(touchX, touchY);
             return true;
         }
 
         // Vertical hue bar
         if (touchX >= hueBarX - 5 * dp && touchX <= hueBarX + hueBarW + 5 * dp &&
             touchY >= hueBarY && touchY <= hueBarY + hueBarH) {
-            float h = MathUtils.clamp((touchY - hueBarY) / hueBarH * 360f, 0, 359);
-            if (colorTarget != null) {
-                targetHue = h;
-                buildSVTexture(targetHue);
-                colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
-            } else {
-                app.palette.hue = h;
-                buildSVTexture(h);
-                app.palette.setFromHSV(h, app.palette.saturation, app.palette.value, app.palette.alpha);
-            }
+            dragMode = 2;
+            updateHue(touchY);
             return true;
         }
 
         // Alpha bar
         if (touchX >= alphaBarX && touchX <= alphaBarX + alphaBarW &&
             touchY >= alphaBarY - 3 * dp && touchY <= alphaBarY + alphaBarH + 3 * dp) {
-            float a = MathUtils.clamp((touchX - alphaBarX) / alphaBarW, 0, 1);
-            if (colorTarget != null) {
-                targetAlpha = a;
-                colorTarget.set(Palette.hsvToColor(targetHue, targetSat, targetVal, targetAlpha));
-            } else {
-                app.palette.alpha = a;
-                app.palette.setFromHSV(app.palette.hue, app.palette.saturation, app.palette.value, a);
-            }
+            dragMode = 3;
+            updateAlpha(touchX);
             return true;
         }
 

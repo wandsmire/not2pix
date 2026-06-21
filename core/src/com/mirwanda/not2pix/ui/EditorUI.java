@@ -357,6 +357,7 @@ public class EditorUI {
         if (activeDrag == DragTarget.DOC_STRIP) docStrip.handleUp(lastTouchX, lastTouchY);
         if (activeDrag == DragTarget.TOP_TOOLBAR) topToolbar.handleUp(lastTouchX, lastTouchY);
         paletteBar.touchReleased();
+        hsvPicker.touchReleased();
         boolean was = touchHandled;
         touchHandled = false;
         activeDrag = DragTarget.NONE;

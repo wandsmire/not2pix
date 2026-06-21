@@ -308,6 +308,8 @@ public class Not2Pix extends ApplicationAdapter {
             pen.updateAnim(Gdx.graphics.getDeltaTime());
             if (pen.isStrokeActive() && !pen.strokePoints.isEmpty()) {
                 Color pc = palette.getSelected();
+                Gdx.gl.glEnable(GL20.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
                 shapeRenderer.setColor(pc);
                 for (int[] p : pen.strokePoints) {
@@ -328,6 +330,8 @@ public class Not2Pix extends ApplicationAdapter {
             // Removal animation: show removed pixels in red then fade
             if (pen.isAnimating() && !pen.removedPoints.isEmpty()) {
                 float alpha = pen.removeAnimTimer / 0.15f;
+                Gdx.gl.glEnable(GL20.GL_BLEND);
+                Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
                 shapeRenderer.setColor(1f, 0f, 0f, alpha);
                 for (int[] p : pen.removedPoints) {
@@ -341,6 +345,8 @@ public class Not2Pix extends ApplicationAdapter {
         if (t instanceof ShapeTool && ((ShapeTool) t).dragging) {
             ShapeTool st = (ShapeTool) t;
             Color previewColor = palette.getSelected();
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(previewColor);
             if (st.currentShape == ShapeTool.Shape.LASSO_FILL && st.lassoPoints.size() > 1) {
