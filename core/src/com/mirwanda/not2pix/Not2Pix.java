@@ -442,7 +442,7 @@ public class Not2Pix extends ApplicationAdapter {
             Gdx.gl.glEnable(GL20.GL_BLEND);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(1f, 0f, 0f, 0.4f);
-            float lw = 0.15f;
+            float lw = 4.0f / zoom;
             if (mirrorX) {
                 shapeRenderer.rectLine(canvasWidth / 2f, 0, canvasWidth / 2f, canvasHeight, lw);
             }
@@ -786,7 +786,7 @@ public class Not2Pix extends ApplicationAdapter {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(gridColor);
-        float lw = 0.05f;
+        float lw = 1.5f / zoom;
         for (int x = 0; x <= canvasWidth; x++) {
             shapeRenderer.rectLine(x, 0, x, canvasHeight, lw);
         }
@@ -800,7 +800,7 @@ public class Not2Pix extends ApplicationAdapter {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(tileGridColor);
-        float lw = 0.1f;
+        float lw = 2.5f / zoom;
         for (int x = 0; x <= canvasWidth; x += tileSize) {
             shapeRenderer.rectLine(x, 0, x, canvasHeight, lw);
         }
