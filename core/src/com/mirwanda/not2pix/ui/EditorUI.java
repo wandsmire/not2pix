@@ -41,7 +41,7 @@ public class EditorUI {
     public CanvasResizeDialog canvasResizeDialog;
 
     private boolean touchHandled = false;
-    private enum DragTarget { NONE, FRAME_STRIP, LAYER_PANEL, HSV_PICKER, MINIMAP, DOC_STRIP, TOP_TOOLBAR }
+    private enum DragTarget { NONE, FRAME_STRIP, LAYER_PANEL, HSV_PICKER, MINIMAP, DOC_STRIP, TOP_TOOLBAR, PREFS_DIALOG }
     private DragTarget activeDrag = DragTarget.NONE;
 
     private float touchDownTime = 0;
@@ -252,7 +252,7 @@ public class EditorUI {
         // Modals
         if (confirmDialog.open) { confirmDialog.handleTouch(tx, ty); touchHandled = true; return true; }
         if (colorAdjustDialog.open) { colorAdjustDialog.handleTouch(tx, ty); touchHandled = true; activeDrag = DragTarget.HSV_PICKER; return true; }
-        if (prefsDialog.open) { prefsDialog.handleTouch(tx, ty); touchHandled = true; return true; }
+        if (prefsDialog.open) { prefsDialog.handleTouch(tx, ty); touchHandled = true; activeDrag = DragTarget.PREFS_DIALOG; return true; }
         if (newCanvasDialog.open) { newCanvasDialog.handleTouch(tx, ty); touchHandled = true; return true; }
         if (canvasResizeDialog.open) { canvasResizeDialog.handleTouch(tx, ty); touchHandled = true; return true; }
         if (brushSizePopup.open) { brushSizePopup.handleTouch(tx, ty); touchHandled = true; return true; }
@@ -346,6 +346,7 @@ public class EditorUI {
             case MINIMAP: minimap.handleTouch(tx, ty); break;
             case TOP_TOOLBAR: topToolbar.handleDrag(tx, ty); break;
             case DOC_STRIP: docStrip.handleDrag(tx, ty); break;
+            case PREFS_DIALOG: prefsDialog.handleDrag(tx, ty); break;
             default: break;
         }
         return true;
@@ -356,6 +357,7 @@ public class EditorUI {
         if (activeDrag == DragTarget.LAYER_PANEL) layerPanel.handleUp();
         if (activeDrag == DragTarget.DOC_STRIP) docStrip.handleUp(lastTouchX, lastTouchY);
         if (activeDrag == DragTarget.TOP_TOOLBAR) topToolbar.handleUp(lastTouchX, lastTouchY);
+        if (activeDrag == DragTarget.PREFS_DIALOG) prefsDialog.handleUp();
         paletteBar.touchReleased();
         hsvPicker.touchReleased();
         boolean was = touchHandled;

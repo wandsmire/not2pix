@@ -27,6 +27,9 @@ public class PreferencesDialog {
     private float x, y, w, h;
     private float rowH;
 
+    // Which slider is being dragged: 0=none, 6=toolsPos, 7=colorPos
+    private int dragSlider = 0;
+
     public Runnable onGridColor;
     public Runnable onTileGridColor;
     public Runnable onBgColor;
@@ -45,10 +48,20 @@ public class PreferencesDialog {
     public void show() {
         float sw = Gdx.graphics.getWidth();
         float sh = Gdx.graphics.getHeight();
-        this.h = 7 * rowH + 10 * dp; // 7 rows + padding
+        this.h = 9 * rowH + 10 * dp; // 9 rows + padding
         this.x = (sw - w) / 2f;
         this.y = (sh - h) / 2f;
+        dragSlider = 0;
         open = true;
+    }
+
+    /** Returns slider track rect for a given row's left edge, width, etc. */
+    private float[] sliderTrack(float ry) {
+        float trackX = x + 10 * dp;
+        float trackW = w - 20 * dp;
+        float trackY = ry + rowH / 2f - 3 * dp;
+        float trackH = 6 * dp;
+        return new float[]{trackX, trackY, trackW, trackH};
     }
 
     public void draw(ShapeRenderer sr, SpriteBatch batch, BitmapFont font) {
@@ -56,7 +69,7 @@ public class PreferencesDialog {
         Gdx.gl.glEnable(GL20.GL_BLEND);
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
-        // Dim
+        // Dim background
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0, 0, 0, 0.6f);
         sr.rect(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
@@ -97,7 +110,15 @@ public class PreferencesDialog {
         drawRow(sr, batch, font, ry, "Minimap Size: " + app.minimapSize, null);
         ry -= rowH;
 
-        // Row 6: Close button
+        // Row 6: Tools position slider
+        drawSliderRow(sr, batch, font, ry, "Tools Y Pos", app.toolsPosition);
+        ry -= rowH;
+
+        // Row 7: Color bar position slider
+        drawSliderRow(sr, batch, font, ry, "Colors Y Pos", app.colorPosition);
+        ry -= rowH;
+
+        // Row 8: Close button
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(0.3f, 0.3f, 0.5f, 1);
         sr.rect(x + w / 2f - 40 * dp, ry + 4 * dp, 80 * dp, rowH - 8 * dp);
@@ -117,12 +138,12 @@ public class PreferencesDialog {
         batch.end();
         if (swatch != null) {
             sr.begin(ShapeRenderer.ShapeType.Filled);
-            // Checkerboard behind swatch
             float sx = x + w - swatchSize - 10 * dp;
             float sy = ry + (rowH - swatchSize) / 2f;
+            // Checkerboard
             sr.setColor(Color.LIGHT_GRAY); sr.rect(sx, sy, swatchSize / 2f, swatchSize / 2f);
-            sr.setColor(Color.DARK_GRAY); sr.rect(sx + swatchSize / 2f, sy, swatchSize / 2f, swatchSize / 2f);
-            sr.setColor(Color.DARK_GRAY); sr.rect(sx, sy + swatchSize / 2f, swatchSize / 2f, swatchSize / 2f);
+            sr.setColor(Color.DARK_GRAY);  sr.rect(sx + swatchSize / 2f, sy, swatchSize / 2f, swatchSize / 2f);
+            sr.setColor(Color.DARK_GRAY);  sr.rect(sx, sy + swatchSize / 2f, swatchSize / 2f, swatchSize / 2f);
             sr.setColor(Color.LIGHT_GRAY); sr.rect(sx + swatchSize / 2f, sy + swatchSize / 2f, swatchSize / 2f, swatchSize / 2f);
             sr.setColor(swatch);
             sr.rect(sx, sy, swatchSize, swatchSize);
@@ -130,14 +151,40 @@ public class PreferencesDialog {
         }
     }
 
+    private void drawSliderRow(ShapeRenderer sr, SpriteBatch batch, BitmapFont font, float ry, String label, float value) {
+        // Label
+        batch.begin();
+        font.setColor(Color.LIGHT_GRAY);
+        font.draw(batch, label, x + 10 * dp, ry + rowH - 6 * dp);
+        batch.end();
+
+        // Track
+        float[] t = sliderTrack(ry);
+        float trackX = t[0], trackY = t[1], trackW = t[2], trackH = t[3];
+
+        sr.begin(ShapeRenderer.ShapeType.Filled);
+        // Track background
+        sr.setColor(0.3f, 0.3f, 0.3f, 1f);
+        sr.rect(trackX, trackY, trackW, trackH);
+        // Track fill (left portion)
+        sr.setColor(0.4f, 0.6f, 1f, 1f);
+        sr.rect(trackX, trackY, trackW * value, trackH);
+        // Thumb circle (drawn as a square since ShapeRenderer circle needs segments)
+        float thumbR = 8 * dp;
+        float thumbX = trackX + trackW * value - thumbR;
+        float thumbY = trackY + trackH / 2f - thumbR;
+        sr.setColor(1f, 1f, 1f, 1f);
+        sr.rect(thumbX, thumbY, thumbR * 2, thumbR * 2);
+        sr.end();
+    }
+
     public boolean handleTouch(float tx, float ty) {
         if (!open) return false;
         // Outside dialog = close
         if (tx < x || tx > x + w || ty < y || ty > y + h) { open = false; return true; }
 
-        float ry = y + h - rowH - 10 * dp;
         int row = (int) ((y + h - 10 * dp - ty) / rowH);
-        if (row < 0 || row > 6) return true;
+        if (row < 0 || row > 8) return true;
 
         switch (row) {
             case 0: if (onGridColor != null) onGridColor.run(); open = false; break;
@@ -146,8 +193,40 @@ public class PreferencesDialog {
             case 3: if (onCheckerLight != null) onCheckerLight.run(); open = false; break;
             case 4: if (onCheckerDark != null) onCheckerDark.run(); open = false; break;
             case 5: if (onMinimapSize != null) onMinimapSize.run(); open = false; break;
-            case 6: open = false; break;
+            case 6: dragSlider = 6; applySliderValue(6, tx); break;
+            case 7: dragSlider = 7; applySliderValue(7, tx); break;
+            case 8: open = false; break;
         }
         return true;
+    }
+
+    public void handleDrag(float tx, float ty) {
+        if (!open || dragSlider == 0) return;
+        applySliderValue(dragSlider, tx);
+    }
+
+    public void handleUp() {
+        if (dragSlider != 0) {
+            app.savePrefs();
+            dragSlider = 0;
+        }
+    }
+
+    /** Maps touch x to a 0..1 value and stores it in the appropriate preference. */
+    private void applySliderValue(int slider, float tx) {
+        float[] t = sliderTrackForRow(slider);
+        if (t == null) return;
+        float trackX = t[0], trackW = t[2];
+        float value = (tx - trackX) / trackW;
+        value = Math.max(0f, Math.min(1f, value));
+        if (slider == 6) app.toolsPosition = value;
+        else if (slider == 7) app.colorPosition = value;
+    }
+
+    /** Returns sliderTrack for a given row index (0-based). */
+    private float[] sliderTrackForRow(int rowIndex) {
+        // Row y = y + h - (rowIndex+1)*rowH - 10*dp
+        float ry = y + h - (rowIndex + 1) * rowH - 10 * dp;
+        return sliderTrack(ry);
     }
 }

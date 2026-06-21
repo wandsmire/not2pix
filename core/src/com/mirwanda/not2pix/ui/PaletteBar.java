@@ -60,6 +60,14 @@ public class PaletteBar extends UIPanel {
         int visibleCount = expanded ? MAX_SWATCHES : COLLAPSED_COUNT;
         this.height = visibleCount * (swatchSize + 2 * dp) + 2 * dp + arrowAreaHeight;
 
+        float sh = Gdx.graphics.getHeight();
+        float stripH = 40 * dp;
+        float topLimit = sh - 96 * dp;
+        float availableH = topLimit - stripH;
+        float maxScrollY = availableH - this.height;
+        float targetY = stripH + 8 * dp + app.colorPosition * maxScrollY;
+        this.y = targetY;
+
         sr.begin(ShapeRenderer.ShapeType.Filled);
         sr.setColor(bgColor);
         sr.rect(x, y, width, height);

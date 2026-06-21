@@ -19,6 +19,7 @@ public class SelectionTool implements Tool {
 
     public float rotationDeg = 0;
     public boolean freeRotateMode = false;
+    public boolean isImported = false;
 
     @Override public String getName() { return "Select"; }
 
@@ -114,19 +115,23 @@ public class SelectionTool implements Tool {
         moving = false;
         rotationDeg = 0;
         freeRotateMode = false;
+        isImported = false;
     }
 
     public void cancelSelection(Pixmap target) {
         if (buffer != null) {
-            target.setBlending(Pixmap.Blending.None);
-            target.drawPixmap(buffer, origX, origY);
-            target.setBlending(Pixmap.Blending.SourceOver);
+            if (!isImported) {
+                target.setBlending(Pixmap.Blending.None);
+                target.drawPixmap(buffer, origX, origY);
+                target.setBlending(Pixmap.Blending.SourceOver);
+            }
             disposeBuffer();
         }
         hasSelection = false;
         moving = false;
         rotationDeg = 0;
         freeRotateMode = false;
+        isImported = false;
     }
 
     /** Copy buffer back at current position without erasing it */

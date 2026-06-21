@@ -21,7 +21,7 @@ public class BackgroundTool implements Tool {
 
     @Override
     public void onDown(Pixmap target, int px, int py, Color color) {
-        if (app.bgTraceTexture == null) return;
+        if (app.bgTraceTexture == null || !app.bgTraceVisible) return;
         
         float wx = px;
         float wy = app.canvasHeight - 1 - py;

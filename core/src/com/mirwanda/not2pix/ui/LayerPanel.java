@@ -64,6 +64,11 @@ public class LayerPanel extends UIPanel {
         float paletteW = 36 * dp + 6 * dp;
         float targetX = open ? screenWidth - panelWidth : screenWidth;
         x = targetX;
+        // Position toggleBtn.y to align with PaletteBar's center
+        if (app.ui != null && app.ui.paletteBar != null) {
+            toggleBtn.y = app.ui.paletteBar.y + (app.ui.paletteBar.height - toggleBtn.height) / 2f;
+        }
+
         // When open, position toggle button at the left edge of the panel; when closed, next to palette
         if (open) {
             toggleBtn.x = x - toggleBtn.width - 2 * dp;

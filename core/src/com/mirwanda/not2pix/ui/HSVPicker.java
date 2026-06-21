@@ -31,6 +31,7 @@ public class HSVPicker extends UIPanel {
     private float previewX, previewY, previewW, previewH;
     private UIButton okBtn;
     private UIButton cancelBtn;
+    private UIButton hexBtn;
     private Color oldColor = new Color();
     public boolean open = false;
 
@@ -85,8 +86,8 @@ public class HSVPicker extends UIPanel {
         alphaBarW = width - 2 * pad;
         alphaBarH = alphaH;
 
-        float halfBtnW = (width - 3 * pad) / 2f;
-        cancelBtn = new UIButton("Cancel", x + pad, y + pad, halfBtnW, btnH);
+        float btnW = (width - 4 * pad) / 3f;
+        cancelBtn = new UIButton("Cancel", x + pad, y + pad, btnW, btnH);
         cancelBtn.action = () -> {
             app.palette.setFromColor(oldColor);
             open = false;
@@ -94,7 +95,22 @@ public class HSVPicker extends UIPanel {
         };
         children.add(cancelBtn);
 
-        okBtn = new UIButton("OK", x + pad + halfBtnW + pad, y + pad, halfBtnW, btnH);
+        hexBtn = new UIButton("#FFFFFFFF", x + 2 * pad + btnW, y + pad, btnW, btnH);
+        hexBtn.action = () -> {
+            Color cur = colorTarget != null ? colorTarget : app.palette.getSelected();
+            String currentHex = colorToHex(cur);
+            Gdx.input.getTextInput(new com.badlogic.gdx.Input.TextInputListener() {
+                @Override
+                public void input(String text) {
+                    parseColorHex(text);
+                }
+                @Override
+                public void canceled() {}
+            }, "Edit Color Hex", currentHex, "#RRGGBB or #RRGGBBAA");
+        };
+        children.add(hexBtn);
+
+        okBtn = new UIButton("OK", x + 3 * pad + 2 * btnW, y + pad, btnW, btnH);
         okBtn.action = () -> { open = false; visible = false; };
         children.add(okBtn);
 
@@ -263,6 +279,10 @@ public class HSVPicker extends UIPanel {
         sr.end();
 
         // Buttons
+        if (hexBtn != null) {
+            hexBtn.label = colorToHex(drawColor);
+            hexBtn.draw(sr, batch, font);
+        }
         okBtn.draw(sr, batch, font);
         cancelBtn.draw(sr, batch, font);
     }
@@ -317,6 +337,8 @@ public class HSVPicker extends UIPanel {
         } else if (dragMode == 3) {
             updateAlpha(touchX);
             return true;
+        } else if (dragMode == 4) {
+            return true;
         }
 
         // OK button
@@ -336,6 +358,15 @@ public class HSVPicker extends UIPanel {
             }
             colorTarget = null; onTargetDone = null;
             open = false; visible = false;
+            return true;
+        }
+
+        // Hex edit button
+        if (hexBtn != null && hexBtn.hit(touchX, touchY)) {
+            dragMode = 4;
+            if (hexBtn.action != null) {
+                hexBtn.action.run();
+            }
             return true;
         }
 
@@ -363,6 +394,52 @@ public class HSVPicker extends UIPanel {
         }
 
         return true;
+    }
+
+    private String colorToHex(Color color) {
+        int r = MathUtils.clamp((int) (color.r * 255f), 0, 255);
+        int g = MathUtils.clamp((int) (color.g * 255f), 0, 255);
+        int b = MathUtils.clamp((int) (color.b * 255f), 0, 255);
+        int a = MathUtils.clamp((int) (color.a * 255f), 0, 255);
+        return String.format("#%02X%02X%02X%02X", r, g, b, a);
+    }
+
+    private void parseColorHex(String text) {
+        try {
+            String hex = text.trim();
+            if (hex.startsWith("#")) {
+                hex = hex.substring(1);
+            }
+            if (hex.length() == 6) {
+                hex += "ff";
+            }
+            if (hex.length() == 8) {
+                float r = Integer.parseInt(hex.substring(0, 2), 16) / 255f;
+                float g = Integer.parseInt(hex.substring(2, 4), 16) / 255f;
+                float b = Integer.parseInt(hex.substring(4, 6), 16) / 255f;
+                float a = Integer.parseInt(hex.substring(6, 8), 16) / 255f;
+
+                Color parsedColor = new Color(r, g, b, a);
+                float[] hsv = Palette.colorToHSV(parsedColor);
+
+                if (colorTarget != null) {
+                    targetHue = hsv[0];
+                    targetSat = hsv[1];
+                    targetVal = hsv[2];
+                    targetAlpha = hsv[3];
+                    colorTarget.set(parsedColor);
+                } else {
+                    app.palette.hue = hsv[0];
+                    app.palette.saturation = hsv[1];
+                    app.palette.value = hsv[2];
+                    app.palette.alpha = hsv[3];
+                    app.palette.setFromHSV(hsv[0], hsv[1], hsv[2], hsv[3]);
+                }
+                buildSVTexture(hsv[0]);
+            }
+        } catch (Exception e) {
+            // Ignore invalid input
+        }
     }
 
     public void dispose() {

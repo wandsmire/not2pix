@@ -1,5 +1,6 @@
 package com.mirwanda.not2pix.ui;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.mirwanda.not2pix.Not2Pix;
@@ -212,5 +213,24 @@ public class Toolbar extends UIPanel {
             sr.triangle(x + w * 0.7f, y + h * 0.32f, x + w * 0.7f, y + h * 0.68f, x + w * 0.83f, y + h * 0.5f);
             sr.end();
         };
+    }
+
+    @Override
+    public void draw(ShapeRenderer sr, com.badlogic.gdx.graphics.g2d.SpriteBatch batch, com.badlogic.gdx.graphics.g2d.BitmapFont font) {
+        float sh = Gdx.graphics.getHeight();
+        float stripH = 40 * dp;
+        float topLimit = sh - 96 * dp;
+        float availableH = topLimit - stripH;
+        float maxScrollY = availableH - this.height;
+        float targetY = stripH + 8 * dp + app.toolsPosition * maxScrollY;
+
+        if (targetY != this.y) {
+            float dy = targetY - this.y;
+            this.y = targetY;
+            for (com.mirwanda.not2pix.ui.UIElement child : children) {
+                child.y += dy;
+            }
+        }
+        super.draw(sr, batch, font);
     }
 }

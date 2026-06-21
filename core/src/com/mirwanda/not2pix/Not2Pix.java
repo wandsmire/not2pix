@@ -64,6 +64,8 @@ public class Not2Pix extends ApplicationAdapter {
     // Minimap settings
     public boolean showMinimap = true;
     public int minimapSize = 96; // dp units
+    public float toolsPosition = 0f; // 0f (bottom) to 1f (top)
+    public float colorPosition = 0f; // 0f (bottom) to 1f (top)
     public boolean frameStripOpen = false;
 
     // Mirror modifiers
@@ -85,6 +87,7 @@ public class Not2Pix extends ApplicationAdapter {
     public float bgTraceWidth = 0f;
     public float bgTraceHeight = 0f;
     public float bgTraceOpacity = 0.6f;
+    public boolean bgTraceVisible = true;
 
     // Multi-document
     public ArrayList<Document> documents = new ArrayList<>();
@@ -263,7 +266,7 @@ public class Not2Pix extends ApplicationAdapter {
         drawCheckerboard();
 
         // Draw background trace image
-        if (bgTraceTexture != null) {
+        if (bgTraceTexture != null && bgTraceVisible) {
             batch.begin();
             batch.setColor(1, 1, 1, bgTraceOpacity);
             batch.draw(bgTraceTexture, bgTraceX, bgTraceY, bgTraceWidth, bgTraceHeight);
@@ -414,8 +417,8 @@ public class Not2Pix extends ApplicationAdapter {
             ui.getFont().getData().setScale(labelScale);
         }
 
-        // Draw background tool overlay (bounding box + handles) if selected
-        if (activeToolIndex == 5 && bgTraceTexture != null) {
+        // Draw background tool overlay (bounding box + handles) if selected and visible
+        if (activeToolIndex == 5 && bgTraceTexture != null && bgTraceVisible) {
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             shapeRenderer.setColor(Color.ORANGE);
             float lw = 0.3f;
@@ -1295,6 +1298,8 @@ public class Not2Pix extends ApplicationAdapter {
         onionSkin = p.getBoolean("onionSkin", false);
         showMinimap = p.getBoolean("showMinimap", true);
         minimapSize = p.getInteger("minimapSize", 96);
+        try { toolsPosition = p.getFloat("toolsPosition", 0f); } catch (Exception e) { toolsPosition = 0f; }
+        try { colorPosition = p.getFloat("colorPosition", 0f); } catch (Exception e) { colorPosition = 0f; }
     }
 
     public void savePrefs() {
@@ -1311,6 +1316,8 @@ public class Not2Pix extends ApplicationAdapter {
         p.putBoolean("onionSkin", onionSkin);
         p.putBoolean("showMinimap", showMinimap);
         p.putInteger("minimapSize", minimapSize);
+        p.putFloat("toolsPosition", toolsPosition);
+        p.putFloat("colorPosition", colorPosition);
         p.flush();
     }
 
@@ -1395,6 +1402,167 @@ public class Not2Pix extends ApplicationAdapter {
             bgTraceTexture.dispose();
             bgTraceTexture = null;
             if (ui != null) ui.showToast("Background removed");
+        }
+    }
+
+    public void importImage() {
+        platform.importImage();
+    }
+
+    public void loadImportedImage(String path) {
+        try {
+            Pixmap pm = new Pixmap(Gdx.files.absolute(path));
+            // Ensure format is RGBA8888
+            Pixmap converted = pm;
+            if (pm.getFormat() != Pixmap.Format.RGBA8888) {
+                converted = new Pixmap(pm.getWidth(), pm.getHeight(), Pixmap.Format.RGBA8888);
+                converted.setBlending(Pixmap.Blending.None);
+                converted.drawPixmap(pm, 0, 0);
+                pm.dispose();
+            }
+
+            // Commit previous selection if any
+            SelectionTool selTool = (SelectionTool) tools[4];
+            if (selTool.hasSelection) {
+                selTool.commitSelection(layers.get(activeLayerIndex).pixmap);
+            }
+
+            // Set up selection tool with the loaded pixmap
+            selTool.buffer = converted;
+            selTool.disposeBufferTexture();
+            selTool.hasSelection = true;
+            selTool.isImported = true; // Mark as imported so canceling doesn't draw it back
+            selTool.selW = converted.getWidth();
+            selTool.selH = converted.getHeight();
+            // Center the imported image on the canvas
+            selTool.selX = (canvasWidth - selTool.selW) / 2;
+            selTool.selY = (canvasHeight - selTool.selH) / 2;
+            selTool.rotationDeg = 0;
+            selTool.freeRotateMode = false;
+
+            // Switch active tool to selection tool (index 4)
+            setTool(4);
+            if (ui != null && ui.toolbar != null) {
+                ui.toolbar.selectToolButton(4);
+            }
+            
+            // Mark layer dirty to refresh rendering
+            layers.get(activeLayerIndex).markDirty();
+
+            if (ui != null) {
+                ui.showToast("Image imported");
+            }
+        } catch (Exception e) {
+            Gdx.app.error("Not2Pix", "Failed to import image: " + path, e);
+            if (ui != null) ui.showToast("Failed to import image");
+        }
+    }
+
+    public void importPalette() {
+        platform.importPalette();
+    }
+
+    public void exportPalette() {
+        platform.exportPalette();
+    }
+
+    public void loadPaletteFromPath(String path) {
+        try {
+            com.badlogic.gdx.files.FileHandle fh = Gdx.files.absolute(path);
+            String content = fh.readString();
+            String[] lines = content.split("\\r?\\n");
+            java.util.ArrayList<Color> newColors = new java.util.ArrayList<>();
+
+            boolean isGPL = false;
+            for (String line : lines) {
+                if (line.trim().startsWith("GIMP Palette")) {
+                    isGPL = true;
+                    break;
+                }
+            }
+
+            for (String line : lines) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) continue;
+                if (trimmed.startsWith("#")) continue;
+                if (trimmed.startsWith("GIMP Palette") || trimmed.startsWith("Name:") || trimmed.startsWith("Columns:")) {
+                    continue;
+                }
+
+                if (isGPL) {
+                    String[] tokens = trimmed.split("\\s+");
+                    if (tokens.length >= 3) {
+                        try {
+                            int r = Integer.parseInt(tokens[0]);
+                            int g = Integer.parseInt(tokens[1]);
+                            int b = Integer.parseInt(tokens[2]);
+                            float a = 1.0f;
+                            if (tokens.length >= 4 && tokens[3].startsWith("#")) {
+                                String hex = tokens[3].substring(1);
+                                if (hex.length() == 8) {
+                                    a = Integer.parseInt(hex.substring(6, 8), 16) / 255f;
+                                }
+                            }
+                            newColors.add(new Color(r / 255f, g / 255f, b / 255f, a));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                } else {
+                    String hex = trimmed;
+                    if (hex.startsWith("#")) {
+                        hex = hex.substring(1);
+                    }
+                    if (hex.length() == 6 || hex.length() == 8) {
+                        try {
+                            float r = Integer.parseInt(hex.substring(0, 2), 16) / 255f;
+                            float g = Integer.parseInt(hex.substring(2, 4), 16) / 255f;
+                            float b = Integer.parseInt(hex.substring(4, 6), 16) / 255f;
+                            float a = 1.0f;
+                            if (hex.length() == 8) {
+                                a = Integer.parseInt(hex.substring(6, 8), 16) / 255f;
+                            }
+                            newColors.add(new Color(r, g, b, a));
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+
+            if (!newColors.isEmpty()) {
+                palette.colors.clear();
+                palette.colors.addAll(newColors);
+                palette.selectedIndex = 0;
+                palette.setFromColor(palette.colors.get(0));
+
+                if (ui != null) {
+                    ui.showToast("Palette imported (" + newColors.size() + " colors)");
+                }
+            } else {
+                if (ui != null) ui.showToast("No valid colors found in file");
+            }
+        } catch (Exception e) {
+            Gdx.app.error("Not2Pix", "Failed to import palette: " + path, e);
+            if (ui != null) ui.showToast("Failed to import palette");
+        }
+    }
+
+    public void savePaletteToPath(String path) {
+        try {
+            com.badlogic.gdx.files.FileHandle fh = Gdx.files.absolute(path);
+            StringBuilder sb = new StringBuilder();
+            sb.append("GIMP Palette\n");
+            sb.append("Name: Not2Pix Palette\n");
+            sb.append("Columns: 8\n");
+            sb.append("#\n");
+            for (Color c : palette.colors) {
+                int r = Math.round(c.r * 255f);
+                int g = Math.round(c.g * 255f);
+                int b = Math.round(c.b * 255f);
+                sb.append(String.format("%3d %3d %3d\t#%02x%02x%02x\n", r, g, b, r, g, b));
+            }
+            fh.writeString(sb.toString(), false);
+            if (ui != null) ui.showToast("Palette exported");
+        } catch (Exception e) {
+            Gdx.app.error("Not2Pix", "Failed to export palette: " + path, e);
+            if (ui != null) ui.showToast("Failed to export palette");
         }
     }
 

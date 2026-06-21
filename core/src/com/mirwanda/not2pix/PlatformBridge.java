@@ -31,5 +31,14 @@ public interface PlatformBridge {
 
     /** Select background image via SAF */
     void selectBackgroundImage();
+
+    /** Import an image onto the canvas */
+    void importImage();
+
+    /** Open palette chooser via SAF */
+    void importPalette();
+
+    /** Save palette via SAF */
+    void exportPalette();
 }
 

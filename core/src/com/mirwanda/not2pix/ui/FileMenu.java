@@ -81,9 +81,15 @@ public class FileMenu {
             menuItems.add(saveMenu);
         }
 
+        MenuItem importMenu = new MenuItem("Import");
+        importMenu.submenu.add(new MenuItem("  Import Image", () -> app.importImage()));
+        importMenu.submenu.add(new MenuItem("  Import Palette", () -> app.importPalette()));
+        menuItems.add(importMenu);
+
         MenuItem exportMenu = new MenuItem("Export");
         exportMenu.submenu.add(new MenuItem("  Export PNG", () -> { if (onExportPng != null) onExportPng.run(); }));
         exportMenu.submenu.add(new MenuItem("  Export GIF", () -> { if (onExportGif != null) onExportGif.run(); }));
+        exportMenu.submenu.add(new MenuItem("  Export Palette", () -> app.exportPalette()));
         menuItems.add(exportMenu);
 
         menuItems.add(new MenuItem("Close", () -> { if (onClose != null) onClose.run(); }));

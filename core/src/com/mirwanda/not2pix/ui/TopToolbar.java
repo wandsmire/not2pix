@@ -60,6 +60,14 @@ public class TopToolbar extends UIPanel {
         btnRemoveBg.action = () -> app.removeBackgroundImage();
         children.add(btnRemoveBg);
 
+        // 4b. Show Bg (only active/visible when Bg Tool is selected)
+        UIButton btnShowBg = new UIButton("Show Bg", 0, 0, buttonW, buttonH);
+        btnShowBg.toggle = true;
+        btnShowBg.action = () -> {
+            app.bgTraceVisible = !app.bgTraceVisible;
+        };
+        children.add(btnShowBg);
+
         // 5. Mirror X (Toggle)
         UIButton btnMirrorX = new UIButton("Mirror X", 0, 0, buttonW, buttonH);
         btnMirrorX.toggle = true;
@@ -121,6 +129,8 @@ public class TopToolbar extends UIPanel {
             UIButton btn = (UIButton) child;
             if (btn.label.equals("Bg Tool")) {
                 btn.selected = (app.activeToolIndex == 5);
+            } else if (btn.label.equals("Show Bg")) {
+                btn.selected = app.bgTraceVisible;
             } else if (btn.label.equals("Mirror X")) {
                 btn.selected = app.mirrorX;
             } else if (btn.label.equals("Mirror Y")) {
@@ -141,7 +151,7 @@ public class TopToolbar extends UIPanel {
             if (!(c instanceof UIButton)) continue;
             UIButton btn = (UIButton) c;
             
-            if (btn.label.equals("Set Bg") || btn.label.equals("Clear Bg")) {
+            if (btn.label.equals("Set Bg") || btn.label.equals("Clear Bg") || btn.label.equals("Show Bg")) {
                 if (app.activeToolIndex != 5) continue;
             }
             active.add(c);
