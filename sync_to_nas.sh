@@ -152,7 +152,7 @@ for task in "${tasks[@]}"; do
     
     if [ "$type" == "dir" ]; then
         # Run rsync dry-run with --itemize-changes to find what needs copying and what needs deleting
-        changes=$(rsync -utr --delete --dry-run --itemize-changes "$src" "$dest" 2>/dev/null || true)
+        changes=$(rsync -utr --delete --exclude='*.aab' --dry-run --itemize-changes "$src" "$dest" 2>/dev/null || true)
         
         # Get all local files in this directory to track what is up-to-date
         local_files=()
@@ -282,7 +282,7 @@ if [ $((total_copy + total_delete)) -gt 0 ]; then
             if [ "$has_changes" = true ]; then
                 echo -e "  ${BOLD}${CYAN}Syncing and cleaning folder: $name/...${NC}"
                 if [ "$type" == "dir" ]; then
-                    rsync -utr --delete --progress "$src" "$dest"
+                    rsync -utr --delete --exclude='*.aab' --progress "$src" "$dest"
                 else
                     rsync -ut --progress "$src" "$dest"
                 fi

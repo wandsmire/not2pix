@@ -1,3 +1,7 @@
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) localPropsFile.withInputStream { localProps.load(it) }
+
 android {
     buildToolsVersion "34.0.0"
     compileSdkVersion 34
@@ -17,20 +21,29 @@ android {
     }
     defaultConfig {
         applicationId "com.mirwanda.not2pix"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 35
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 3
+        versionName "1.0.0"
         multiDexEnabled true
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    signingConfigs {
+        release {
+            storeFile     rootProject.file(localProps['RELEASE_STORE_FILE'])
+            storePassword localProps['RELEASE_STORE_PASSWORD']
+            keyAlias      localProps['RELEASE_KEY_ALIAS']
+            keyPassword   localProps['RELEASE_KEY_PASSWORD']
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }
